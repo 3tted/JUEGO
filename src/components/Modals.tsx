@@ -6,12 +6,14 @@ interface LevelCompletedModalProps {
   floor: DungeonFloor;
   intelCount: number;
   onNextFloor: () => void;
+  onOpenLeaderboard?: () => void;
 }
 
 export const LevelCompletedModal: React.FC<LevelCompletedModalProps> = ({
   floor,
   intelCount,
   onNextFloor,
+  onOpenLeaderboard,
 }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 select-none animate-in fade-in duration-300">
@@ -41,18 +43,29 @@ export const LevelCompletedModal: React.FC<LevelCompletedModalProps> = ({
             <span className="text-emerald-400 font-bold">100% Completada</span>
           </div>
           <div className="flex justify-between text-slate-400">
-            <span>Intel Confidencial:</span>
-            <span className="text-amber-400 font-bold">{intelCount} archivos</span>
+            <span>Intel Confidencial / Rads:</span>
+            <span className="text-amber-400 font-bold">{intelCount} recolectados</span>
           </div>
         </div>
 
-        <button
-          onClick={onNextFloor}
-          className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-slate-950 font-bold text-sm rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-600/30"
-        >
-          <span>DESCENDER AL SIGUIENTE NIVEL (NUEVO PLANO)</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={onNextFloor}
+            className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-slate-950 font-bold text-sm rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-600/30"
+          >
+            <span>DESCENDER AL SIGUIENTE NIVEL (NUEVO PLANO)</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+          {onOpenLeaderboard && (
+            <button
+              onClick={onOpenLeaderboard}
+              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer border border-emerald-500/30"
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span>VER MARCADORES & PERFIL EN LA NUBE (FIREBASE)</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -60,9 +73,10 @@ export const LevelCompletedModal: React.FC<LevelCompletedModalProps> = ({
 
 interface GameOverModalProps {
   onRetry: () => void;
+  onOpenLeaderboard?: () => void;
 }
 
-export const GameOverModal: React.FC<GameOverModalProps> = ({ onRetry }) => {
+export const GameOverModal: React.FC<GameOverModalProps> = ({ onRetry, onOpenLeaderboard }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 select-none animate-in fade-in duration-300">
       <div className="w-full max-w-md bg-slate-900 border border-rose-500/50 rounded-xl p-6 shadow-2xl text-center font-mono">
@@ -81,13 +95,24 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({ onRetry }) => {
           En cada reintento, los planos de la base enemiga se vuelven a generar de forma totalmente aleatoria con nuevas salas y una ruta transitable garantizada.
         </p>
 
-        <button
-          onClick={onRetry}
-          className="w-full py-3 bg-rose-600 hover:bg-rose-500 active:scale-98 text-white font-bold text-sm rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-rose-600/30"
-        >
-          <RefreshCw className="w-4 h-4" />
-          <span>INICIAR NUEVA INFILTRACIÓN (NUEVO PLANO AL AZAR)</span>
-        </button>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={onRetry}
+            className="w-full py-3 bg-rose-600 hover:bg-rose-500 active:scale-98 text-white font-bold text-sm rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-rose-600/30"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>INICIAR NUEVA INFILTRACIÓN (NUEVO PLANO AL AZAR)</span>
+          </button>
+          {onOpenLeaderboard && (
+            <button
+              onClick={onOpenLeaderboard}
+              className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer border border-amber-500/30"
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span>CONSULTAR CLASIFICACIÓN GLOBAL (FIREBASE)</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

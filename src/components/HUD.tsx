@@ -1,6 +1,6 @@
 import React from 'react';
 import { PlayerState, DungeonFloor, RoomInstance } from '../types';
-import { Map, RefreshCw, Volume2, VolumeX, Route } from 'lucide-react';
+import { Map, RefreshCw, Volume2, VolumeX, Route, Trophy, Save } from 'lucide-react';
 
 interface HUDProps {
   player: PlayerState;
@@ -13,18 +13,27 @@ interface HUDProps {
   onRegenerateFloor: () => void;
   showPathGuide: boolean;
   onTogglePathGuide: () => void;
+  onOpenLeaderboard: () => void;
+  onSaveGame?: () => void;
+  isSaving?: boolean;
+  hasSavedGame?: boolean;
   interactionPrompt?: string | null;
 }
 
 export const HUD: React.FC<HUDProps> = ({
   player,
   dungeon,
+  currentRoom,
   soundEnabled,
   onToggleSound,
   onOpenBlueprint,
   onRegenerateFloor,
   showPathGuide,
   onTogglePathGuide,
+  onOpenLeaderboard,
+  onSaveGame,
+  isSaving = false,
+  hasSavedGame = false,
 }) => {
   const currentHealth = Math.round(player.health);
   const maxHealth = player.maxHealth || 8;
@@ -126,6 +135,29 @@ export const HUD: React.FC<HUDProps> = ({
 
         {/* Top Right: Retro Tactical Tools */}
         <div className="flex items-center gap-2 pointer-events-auto">
+          {onSaveGame && (
+            <button
+              id="hud-save-btn"
+              onClick={onSaveGame}
+              disabled={isSaving}
+              className={`p-2 border-2 rounded transition-all cursor-pointer flex items-center gap-1 ${
+                hasSavedGame
+                  ? 'bg-stone-900 border-[#e2b044] text-[#e2b044] hover:bg-stone-800 shadow-[0_0_8px_rgba(226,176,68,0.3)]'
+                  : 'bg-stone-900 border-stone-600 text-stone-300 hover:bg-stone-800'
+              }`}
+              title="Guardar Progreso & Posición del Muñeco en la Nube"
+            >
+              <Save className={`w-4 h-4 ${isSaving ? 'animate-spin' : ''}`} />
+            </button>
+          )}
+          <button
+            id="hud-leaderboard-btn"
+            onClick={onOpenLeaderboard}
+            className="p-2 bg-stone-900 border-2 border-[#4ade80] text-[#4ade80] hover:bg-stone-800 rounded transition-all cursor-pointer shadow-[0_0_8px_rgba(74,222,128,0.3)]"
+            title="Marcadores & Perfil Firebase"
+          >
+            <Trophy className="w-4 h-4" />
+          </button>
           <button
             onClick={onTogglePathGuide}
             className={`p-2 border-2 border-black rounded transition-all cursor-pointer ${
@@ -171,6 +203,20 @@ export const HUD: React.FC<HUDProps> = ({
             RADS: {player.intelCollected || 0}
           </span>
         </div>
+
+        {/* Room Combat Lockdown Status */}
+        {currentRoom?.isLockedDown && (
+          <div className="flex items-center gap-2 bg-red-950/90 border-2 border-red-500 text-red-200 px-3 py-1.5 rounded animate-pulse text-[10px] tracking-wider font-bold shadow-lg shadow-red-900/50">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+            <span>SALA BLOQUEADA: EN COMBATE</span>
+          </div>
+        )}
+        {currentRoom?.isCleared && currentRoom.type !== 'START' && !currentRoom.isLockedDown && (
+          <div className="hidden sm:flex items-center gap-2 bg-emerald-950/80 border-2 border-emerald-500 text-emerald-300 px-3 py-1.5 rounded text-[10px] tracking-wider font-bold">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span>SALA DESPEJADA</span>
+          </div>
+        )}
 
         {/* Floor Level */}
         <div className="bg-black/80 border-2 border-black p-1.5 rounded text-stone-300 text-xs font-bold">

@@ -134,6 +134,8 @@ export interface RoomInstance {
   isCleared: boolean;
   isVisited: boolean;
   hasBeenRevealed: boolean;
+  isLockedDown?: boolean;
+  doorAnimProgress?: number;
   bounds: {
     worldX: number;
     worldY: number;

@@ -189,6 +189,74 @@ class SoundSystem {
     osc.stop(t + 0.2);
   }
 
+  public playDoorLock() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    // Heavy metal thud
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(160, t);
+    osc.frequency.exponentialRampToValueAtTime(35, t + 0.25);
+
+    gain.gain.setValueAtTime(this.volume * 0.8, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.28);
+
+    // Mechanical clang noise
+    this.playNoise(0.18, 0.45 * this.volume, 600);
+
+    // Alarm blip
+    const blip = this.ctx.createOscillator();
+    const blipGain = this.ctx.createGain();
+    blip.type = 'square';
+    blip.frequency.setValueAtTime(440, t + 0.05);
+    blip.frequency.setValueAtTime(330, t + 0.15);
+    blipGain.gain.setValueAtTime(this.volume * 0.25, t + 0.05);
+    blipGain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    blip.connect(blipGain);
+    blipGain.connect(this.ctx.destination);
+    blip.start(t + 0.05);
+    blip.stop(t + 0.25);
+  }
+
+  public playDoorUnlock() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+
+    // Pneumatic release hiss
+    this.playNoise(0.2, 0.25 * this.volume, 1200);
+
+    // Ascending confirmation chime
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, t + 0.05);
+    osc.frequency.setValueAtTime(659.25, t + 0.14);
+    osc.frequency.setValueAtTime(880, t + 0.22);
+
+    gain.gain.setValueAtTime(this.volume * 0.4, t + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(t + 0.05);
+    osc.stop(t + 0.38);
+  }
+
   public playLaserBurn() {
     if (!this.enabled) return;
     this.init();

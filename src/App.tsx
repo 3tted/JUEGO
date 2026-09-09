@@ -6,10 +6,14 @@ import { DungeonFloor, PlayerState, RoomInstance } from './types';
 import { HUD } from './components/HUD';
 import { BlueprintViewer } from './components/BlueprintViewer';
 import { LevelCompletedModal, GameOverModal, InstructionsModal } from './components/Modals';
+import { LeaderboardModal } from './components/LeaderboardModal';
 import { VirtualControls } from './components/VirtualControls';
-import { HelpCircle, Route } from 'lucide-react';
+import { HelpCircle, Route, Trophy } from 'lucide-react';
+import { useFirebase } from './firebase/FirebaseContext';
+import { submitLeaderboardRun, SavedGameData } from './firebase/service';
 
 export default function App() {
+  const { user, userProfile, saveRun, savedGame, saveGameProgress } = useFirebase();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
@@ -24,16 +28,18 @@ export default function App() {
   const [alarmLevel, setAlarmLevel] = useState<number>(0);
   const [showBlueprint, setShowBlueprint] = useState<boolean>(false);
   const [showInstructions, setShowInstructions] = useState<boolean>(false);
+  const [showLeaderboard, setShowLeaderboard] = useState<boolean>(false);
   const [showPathGuide, setShowPathGuide] = useState<boolean>(true);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [isFloorCleared, setIsFloorCleared] = useState<boolean>(false);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const [interactionPrompt, setInteractionPrompt] = useState<string | null>(null);
   const [pathVerifiedBadge, setPathVerifiedBadge] = useState<boolean>(true);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   // Initialize or Rebuild Engine
   const startEngine = useCallback(
-    (targetDungeon: DungeonFloor) => {
+    (targetDungeon: DungeonFloor, restoredSave?: SavedGameData) => {
       if (!canvasRef.current) return;
 
       if (engineRef.current) {
@@ -42,27 +48,62 @@ export default function App() {
       }
 
       const canvas = canvasRef.current;
-      const engine = new GameEngine(canvas, targetDungeon, {
-        onFloorCleared: () => {
-          setIsFloorCleared(true);
+      const engine = new GameEngine(
+        canvas,
+        targetDungeon,
+        {
+          onFloorCleared: () => {
+            setIsFloorCleared(true);
+            // Sync run victory to Firestore
+            if (user && engineRef.current) {
+              const rads = engineRef.current.player.intelCollected || 0;
+              saveRun(targetDungeon.floorLevel, rads, 'victory');
+              submitLeaderboardRun(
+                user.uid,
+                user.displayName || 'Mutant Scout',
+                user.photoURL || undefined,
+                targetDungeon.floorLevel,
+                rads,
+                'victory'
+              ).catch((err) => console.error('Error saving leaderboard victory:', err));
+            }
+          },
+          onPlayerDied: () => {
+            setIsGameOver(true);
+            // Sync run defeat to Firestore
+            if (user && engineRef.current) {
+              const rads = engineRef.current.player.intelCollected || 0;
+              saveRun(targetDungeon.floorLevel, rads, 'defeated');
+              submitLeaderboardRun(
+                user.uid,
+                user.displayName || 'Mutant Scout',
+                user.photoURL || undefined,
+                targetDungeon.floorLevel,
+                rads,
+                'defeated'
+              ).catch((err) => console.error('Error saving leaderboard run:', err));
+            }
+          },
+          onAlarmChange: (lvl) => {
+            setAlarmLevel(lvl);
+          },
+          onRoomEntered: (room) => {
+            setCurrentRoom(room);
+          },
         },
-        onPlayerDied: () => {
-          setIsGameOver(true);
-        },
-        onAlarmChange: (lvl) => {
-          setAlarmLevel(lvl);
-        },
-        onRoomEntered: (room) => {
-          setCurrentRoom(room);
-        },
-      });
+        restoredSave
+      );
 
       engine.showPathGuide = showPathGuide;
       engine.start();
       engineRef.current = engine;
 
       setPlayerState({ ...engine.player });
-      setCurrentRoom(targetDungeon.rooms.get(targetDungeon.startRoomId));
+      const initialRoom =
+        restoredSave && targetDungeon.rooms.has(restoredSave.currentRoomId)
+          ? targetDungeon.rooms.get(restoredSave.currentRoomId)
+          : targetDungeon.rooms.get(targetDungeon.startRoomId);
+      setCurrentRoom(initialRoom);
       setIsFloorCleared(false);
       setIsGameOver(false);
       setAlarmLevel(0);
@@ -71,7 +112,39 @@ export default function App() {
       setPathVerifiedBadge(true);
       setTimeout(() => setPathVerifiedBadge(false), 4500);
     },
-    [showPathGuide]
+    [showPathGuide, user, saveRun]
+  );
+
+  // Manual save of game progress and exact player position
+  const handleSaveCurrentGame = useCallback(async () => {
+    if (!engineRef.current) return;
+    setIsSaving(true);
+    try {
+      const snapshot = engineRef.current.getSaveDataSnapshot();
+      await saveGameProgress(snapshot);
+      setInteractionPrompt('¡PROGRESO Y POSICIÓN DEL MUÑECO GUARDADOS!');
+      setTimeout(() => setInteractionPrompt(null), 4000);
+    } catch (err) {
+      console.error('Error saving game:', err);
+      setInteractionPrompt('ERROR AL GUARDAR PARTIDA');
+      setTimeout(() => setInteractionPrompt(null), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [saveGameProgress]);
+
+  // Resume saved game where the player left off
+  const handleResumeGame = useCallback(
+    (save: SavedGameData) => {
+      setFloorLevel(save.floorLevel);
+      setSeed(save.seed);
+      const restoredDungeon = generateDungeon(save.seed, save.floorLevel);
+      setDungeon(restoredDungeon);
+      startEngine(restoredDungeon, save);
+      setInteractionPrompt('¡PARTIDA CARGADA! MUÑECO RESTAURADO');
+      setTimeout(() => setInteractionPrompt(null), 4000);
+    },
+    [startEngine]
   );
 
   // Handle new seed generation
@@ -142,10 +215,11 @@ export default function App() {
       setPlayerState({ ...eng.player });
       setAlarmLevel(eng.alarmLevel);
 
-      // Check interaction prompts
+      // Check interaction prompts & item legends
       const room = eng.dungeon.rooms.get(eng.player.currentRoomId);
-      let prompt: string | null = null;
-      if (room) {
+      let prompt: string | null = eng.activeLegend;
+
+      if (!prompt && room) {
         // Near terminal?
         for (const term of room.terminals) {
           const dist = Math.hypot(eng.player.x - term.x, eng.player.y - term.y);
@@ -155,7 +229,7 @@ export default function App() {
           }
         }
         // Near boss elevator?
-        if (room.type === 'BOSS') {
+        if (!prompt && room.type === 'BOSS') {
           const bossDead = !room.boss || room.boss.defeated;
           if (bossDead) {
             const elX = room.bounds.worldX + 7 * 48 + 24;
@@ -229,10 +303,28 @@ export default function App() {
           </div>
         )}
 
-        {/* Interaction Prompt (Terminal, Portal, Chest) */}
+        {/* Interaction Prompt & Item Inability Legend */}
         {interactionPrompt && (
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 bg-black/90 border-2 border-white text-white px-3 py-1.5 text-xs">
-            {interactionPrompt}
+          <div
+            id="legend-interaction-banner"
+            className={`absolute bottom-16 left-1/2 -translate-x-1/2 z-30 border-2 px-4 py-2 font-mono text-xs shadow-2xl flex items-center gap-2.5 max-w-xl text-center pointer-events-none transition-all duration-200 ${
+              interactionPrompt.includes('NO PUEDES') ||
+              interactionPrompt.includes('BLOQUEADO') ||
+              interactionPrompt.includes('LLENA') ||
+              interactionPrompt.includes('MÁXIMO')
+                ? 'bg-red-950/95 border-red-500 text-red-100 shadow-[0_0_15px_rgba(239,68,68,0.5)] font-bold animate-pulse'
+                : 'bg-black/95 border-yellow-400 text-yellow-300 shadow-[0_0_15px_rgba(0,0,0,0.8)]'
+            }`}
+          >
+            <span className="text-base shrink-0">
+              {interactionPrompt.includes('NO PUEDES') ||
+              interactionPrompt.includes('BLOQUEADO') ||
+              interactionPrompt.includes('LLENA') ||
+              interactionPrompt.includes('MÁXIMO')
+                ? '⛔'
+                : '💡'}
+            </span>
+            <span className="tracking-wide leading-snug">{interactionPrompt}</span>
           </div>
         )}
 
@@ -249,6 +341,10 @@ export default function App() {
             onRegenerateFloor={handleRegenerateFloor}
             showPathGuide={showPathGuide}
             onTogglePathGuide={handleTogglePathGuide}
+            onOpenLeaderboard={() => setShowLeaderboard(true)}
+            onSaveGame={handleSaveCurrentGame}
+            isSaving={isSaving}
+            hasSavedGame={!!savedGame}
             interactionPrompt={interactionPrompt}
           />
         )}
@@ -316,11 +412,25 @@ export default function App() {
           floor={dungeon}
           intelCount={playerState?.intelCollected || 0}
           onNextFloor={handleNextFloor}
+          onOpenLeaderboard={() => setShowLeaderboard(true)}
         />
       )}
 
       {/* Game Over Modal */}
-      {isGameOver && <GameOverModal onRetry={handleRetry} />}
+      {isGameOver && (
+        <GameOverModal
+          onRetry={handleRetry}
+          onOpenLeaderboard={() => setShowLeaderboard(true)}
+        />
+      )}
+
+      {/* Leaderboard & Firebase Cloud Stats Modal */}
+      <LeaderboardModal
+        isOpen={showLeaderboard}
+        onClose={() => setShowLeaderboard(false)}
+        onResumeGame={handleResumeGame}
+        onSaveCurrentGame={handleSaveCurrentGame}
+      />
 
       {/* Instructions Modal */}
       {showInstructions && <InstructionsModal onClose={() => setShowInstructions(false)} />}

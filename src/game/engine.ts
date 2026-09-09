@@ -1,6 +1,7 @@
 import {
   BossEntity,
   CameraEntity,
+  Direction,
   DungeonFloor,
   GuardEntity,
   ItemDrop,
@@ -14,20 +15,31 @@ import {
   TerminalEntity,
 } from '../types';
 import { sound } from './audio';
-import { CENTER_TILE, ROOM_HEIGHT, ROOM_WIDTH, TILE_SIZE } from './prefabs';
+import { CENTER_TILE, DOOR_E, DOOR_N, DOOR_S, DOOR_W, ROOM_HEIGHT, ROOM_WIDTH, TILE_SIZE } from './prefabs';
 import {
+  drawAgent007Player,
   drawBandit,
   drawBarrelCactus,
   drawBoneCarcass,
-  drawDuckPlayer,
   drawExplosivesChest,
   drawNuclearCrosshair,
+  drawNuclearThroneDoor,
   drawPixelRect,
   drawRadCanister,
   drawRadPellet,
   drawSaguaroCactus,
   drawScorpion,
 } from './pixelSprites';
+
+export interface FloatingNotice {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  life: number;
+  maxLife: number;
+}
 
 export interface BulletCasing {
   x: number;
@@ -93,21 +105,65 @@ export class GameEngine {
   // Katana Slash Arc
   public slashCooldown: number = 0;
 
+  // Proximity Legend & Floating World Notices
+  public activeLegend: string | null = null;
+  public floatingNotices: FloatingNotice[] = [];
+
+  public addFloatingNotice(x: number, y: number, text: string, color: string = '#ffffff') {
+    const existing = this.floatingNotices.find((n) => n.text === text && Math.hypot(n.x - x, n.y - y) < 28);
+    if (existing) {
+      existing.life = 1.0;
+      return;
+    }
+    this.floatingNotices.push({
+      id: Math.random().toString(),
+      x,
+      y,
+      text,
+      color,
+      life: 1.4,
+      maxLife: 1.4,
+    });
+  }
+
   // Running loop
   private animFrameId: number | null = null;
   private lastTime: number = 0;
   private callbacks: GameEngineCallbacks;
   public isTransitioning: boolean = false;
 
-  constructor(canvas: HTMLCanvasElement, dungeon: DungeonFloor, callbacks: GameEngineCallbacks = {}) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    dungeon: DungeonFloor,
+    callbacks: GameEngineCallbacks = {},
+    restoredSave?: {
+      playerX: number;
+      playerY: number;
+      currentRoomId: string;
+      health: number;
+      maxHealth: number;
+      ammo: number;
+      explosivesAmmo?: number;
+      intelCollected?: number;
+      clearedRoomIds?: string[];
+      visitedRoomIds?: string[];
+    }
+  ) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
     this.dungeon = dungeon;
     this.callbacks = callbacks;
 
     const startRoom = dungeon.rooms.get(dungeon.startRoomId)!;
-    const startX = startRoom.bounds.worldX + CENTER_TILE.x * TILE_SIZE + TILE_SIZE / 2;
-    const startY = startRoom.bounds.worldY + CENTER_TILE.y * TILE_SIZE + TILE_SIZE / 2;
+    const defaultStartX = startRoom.bounds.worldX + CENTER_TILE.x * TILE_SIZE + TILE_SIZE / 2;
+    const defaultStartY = startRoom.bounds.worldY + CENTER_TILE.y * TILE_SIZE + TILE_SIZE / 2;
+
+    const startX = restoredSave ? restoredSave.playerX : defaultStartX;
+    const startY = restoredSave ? restoredSave.playerY : defaultStartY;
+    const initialRoomId =
+      restoredSave && dungeon.rooms.has(restoredSave.currentRoomId)
+        ? restoredSave.currentRoomId
+        : dungeon.startRoomId;
 
     this.player = {
       x: startX,
@@ -115,11 +171,11 @@ export class GameEngine {
       vx: 0,
       vy: 0,
       angle: 0,
-      health: 8, // Exact 8/8 HP from screenshot
-      maxHealth: 8,
+      health: restoredSave ? restoredSave.health : 8,
+      maxHealth: restoredSave ? restoredSave.maxHealth : 8,
       armor: 4,
       maxArmor: 4,
-      ammo: 36,
+      ammo: restoredSave ? restoredSave.ammo : 36,
       maxAmmo: 99,
       magAmmo: 8,
       magCapacity: 8,
@@ -130,8 +186,8 @@ export class GameEngine {
         smokeBombs: 2,
       },
       keycards: [],
-      intelCollected: 12, // RAD count
-      currentRoomId: dungeon.startRoomId,
+      intelCollected: restoredSave?.intelCollected ?? 12,
+      currentRoomId: initialRoomId,
       isStealthing: false,
       isSprinting: false,
       isDashing: false,
@@ -142,17 +198,63 @@ export class GameEngine {
       walkCycle: 0,
       isSwinging: false,
       swingProgress: 0,
-      explosivesAmmo: 18, // Exact "+18 EXPLOSIVES" from screenshot
-      activeWeaponSlot: 2, // Slot "2" from screenshot
+      explosivesAmmo: restoredSave?.explosivesAmmo ?? 18,
+      activeWeaponSlot: 2,
     };
 
     this.cameraX = startX;
     this.cameraY = startY;
 
+    // If restoring rooms
+    if (restoredSave?.visitedRoomIds) {
+      for (const rId of restoredSave.visitedRoomIds) {
+        const r = dungeon.rooms.get(rId);
+        if (r) {
+          r.isVisited = true;
+          r.hasBeenRevealed = true;
+        }
+      }
+    }
+    if (restoredSave?.clearedRoomIds) {
+      for (const rId of restoredSave.clearedRoomIds) {
+        const r = dungeon.rooms.get(rId);
+        if (r) {
+          r.isCleared = true;
+          r.isLockedDown = false;
+          r.guards = [];
+          if (r.boss) r.boss.defeated = true;
+        }
+      }
+    }
+
     startRoom.isVisited = true;
     startRoom.hasBeenRevealed = true;
 
     this.initEvents();
+  }
+
+  public getSaveDataSnapshot() {
+    const clearedRoomIds: string[] = [];
+    const visitedRoomIds: string[] = [];
+    this.dungeon.rooms.forEach((room) => {
+      if (room.isCleared) clearedRoomIds.push(room.id);
+      if (room.isVisited) visitedRoomIds.push(room.id);
+    });
+
+    return {
+      floorLevel: this.dungeon.floorLevel,
+      seed: this.dungeon.seed,
+      playerX: Math.round(this.player.x),
+      playerY: Math.round(this.player.y),
+      currentRoomId: this.player.currentRoomId,
+      health: this.player.health,
+      maxHealth: this.player.maxHealth,
+      ammo: this.player.ammo,
+      explosivesAmmo: this.player.explosivesAmmo,
+      intelCollected: this.player.intelCollected,
+      clearedRoomIds,
+      visitedRoomIds,
+    };
   }
 
   private initEvents() {
@@ -565,6 +667,7 @@ export class GameEngine {
     this.updateProjectiles(dt);
     this.updateParticles(dt);
     this.updateRoomEntities(dt);
+    this.updateLockdown(dt);
     this.checkElevatorInteract();
   }
 
@@ -673,33 +776,146 @@ export class GameEngine {
       }
     }
 
-    // Pickups
+    // 1. Pickups & Proximity Legends (Explaining why an item cannot be picked up)
+    let currentLegend: string | null = null;
+
     for (let i = currentRoom.items.length - 1; i >= 0; i--) {
       const item = currentRoom.items[i];
       const dist = Math.hypot(this.player.x - item.x, this.player.y - item.y);
+
+      // Distance to show informative explanation banner (< 55px)
+      if (dist < 55) {
+        if (item.type === 'ammo') {
+          if (this.player.ammo >= this.player.maxAmmo) {
+            currentLegend = `NO PUEDES RECOGER MUNICIÓN: Capacidad máxima alcanzada (${this.player.ammo}/${this.player.maxAmmo} balas). Dispara para liberar espacio.`;
+          } else {
+            currentLegend = `MUNICIÓN (+12 BALAS 9MM): Písala para recargar munición de reserva.`;
+          }
+        } else if (item.type === 'explosives') {
+          if (this.player.explosivesAmmo >= 99) {
+            currentLegend = `NO PUEDES RECOGER EXPLOSIVOS: Capacidad de explosivos llena (${this.player.explosivesAmmo}/99).`;
+          } else {
+            currentLegend = `EXPLOSIVOS (+6): Písalos para recoger cargas explosivas.`;
+          }
+        } else if (item.type === 'medkit') {
+          if (this.player.health >= this.player.maxHealth) {
+            currentLegend = `NO PUEDES RECOGER BOTIQUÍN: Tu salud ya está al máximo (${this.player.health}/${this.player.maxHealth} HP).`;
+          } else {
+            currentLegend = `BOTIQUÍN DE PRIMEROS AUXILIOS (+4 HP): Písalo para restaurar vida.`;
+          }
+        } else if (item.type === 'intel') {
+          currentLegend = `INTEL / RADS (+5): Documentos confidenciales de la base enemiga.`;
+        }
+      }
+
+      // Touch / Collect distance (< 24px)
       if (dist < 24) {
-        sound.playPickup();
-        if (item.type === 'ammo') this.player.ammo = Math.min(99, this.player.ammo + 12);
-        if (item.type === 'explosives') this.player.explosivesAmmo = Math.min(99, this.player.explosivesAmmo + 6);
-        if (item.type === 'medkit') this.player.health = Math.min(this.player.maxHealth, this.player.health + 4);
-        if (item.type === 'intel') this.player.intelCollected += 5;
-        currentRoom.items.splice(i, 1);
+        if (item.type === 'ammo') {
+          if (this.player.ammo < this.player.maxAmmo) {
+            sound.playPickup();
+            this.player.ammo = Math.min(this.player.maxAmmo, this.player.ammo + 12);
+            currentRoom.items.splice(i, 1);
+            this.addFloatingNotice(item.x, item.y, '+12 BALAS', '#f6e05e');
+          } else {
+            // Cannot pick up because ammo is full! Show clear floating world notice
+            this.addFloatingNotice(item.x, item.y - 10, 'MUNICIÓN LLENA (99/99)', '#ef4444');
+          }
+        } else if (item.type === 'explosives') {
+          if (this.player.explosivesAmmo < 99) {
+            sound.playPickup();
+            this.player.explosivesAmmo = Math.min(99, this.player.explosivesAmmo + 6);
+            currentRoom.items.splice(i, 1);
+            this.addFloatingNotice(item.x, item.y, '+6 EXPLOSIVOS', '#f97316');
+          } else {
+            this.addFloatingNotice(item.x, item.y - 10, 'EXPLOSIVOS LLENOS', '#ef4444');
+          }
+        } else if (item.type === 'medkit') {
+          if (this.player.health < this.player.maxHealth) {
+            sound.playPickup();
+            this.player.health = Math.min(this.player.maxHealth, this.player.health + 4);
+            currentRoom.items.splice(i, 1);
+            this.addFloatingNotice(item.x, item.y, '+4 SALUD', '#22c55e');
+          } else {
+            this.addFloatingNotice(item.x, item.y - 10, 'SALUD AL MÁXIMO (8/8)', '#ef4444');
+          }
+        } else if (item.type === 'intel') {
+          sound.playPickup();
+          this.player.intelCollected += 5;
+          currentRoom.items.splice(i, 1);
+          this.addFloatingNotice(item.x, item.y, '+5 INTEL', '#4ade80');
+        }
       }
     }
 
     // Terminals / Consoles
     for (const term of currentRoom.terminals) {
-      if (Math.hypot(this.player.x - term.x, this.player.y - term.y) < 30 && !term.hacked) {
+      const tDist = Math.hypot(this.player.x - term.x, this.player.y - term.y);
+      if (tDist < 45) {
+        if (term.hacked) {
+          if (!currentLegend) currentLegend = 'TERMINAL YA HACKEADA: Datos de inteligencia ya extraídos.';
+        } else {
+          if (!currentLegend) currentLegend = `TERMINAL DE SEGURIDAD: Mantén [E] para piratear (${Math.round(term.hackProgress)}%)`;
+        }
+      }
+
+      if (tDist < 30 && !term.hacked) {
         if (this.keys['KeyE']) {
           term.hackProgress += dt * 60;
           sound.playHackBeep();
           if (term.hackProgress >= 100) {
             term.hacked = true;
             this.spawnRadDrops(term.x, term.y, 4);
+            this.addFloatingNotice(term.x, term.y - 10, 'HACKEO COMPLETADO', '#48bb78');
           }
         }
       }
     }
+
+    // Boss Portal Proximity Legend
+    if (currentRoom.type === 'BOSS') {
+      const bossDead = !currentRoom.boss || currentRoom.boss.defeated;
+      const elX = currentRoom.bounds.worldX + CENTER_TILE.x * TILE_SIZE + TILE_SIZE / 2;
+      const elY = currentRoom.bounds.worldY + CENTER_TILE.y * TILE_SIZE + TILE_SIZE / 2;
+      if (Math.hypot(this.player.x - elX, this.player.y - elY) < 55) {
+        if (!bossDead) {
+          if (!currentLegend) currentLegend = 'PORTAL BLOQUEADO: Neutraliza al Jefe del sector para activar el ascensor.';
+        } else {
+          if (!currentLegend) currentLegend = 'ASCENSOR HABILITADO: Presiona [E] para descender al siguiente sector.';
+        }
+      }
+    }
+
+    // Door Lockdown Proximity Legend & Combat Feedback
+    if (currentRoom.isLockedDown) {
+      const doorPositions: Record<Direction, { x: number; y: number }> = {
+        N: DOOR_N,
+        S: DOOR_S,
+        W: DOOR_W,
+        E: DOOR_E,
+      };
+
+      for (const [dirKey, door] of Object.entries(currentRoom.doors)) {
+        if (!door) continue;
+        const pos = doorPositions[dirKey as Direction];
+        const dwx = currentRoom.bounds.worldX + pos.x * TILE_SIZE + TILE_SIZE / 2;
+        const dwy = currentRoom.bounds.worldY + pos.y * TILE_SIZE + TILE_SIZE / 2;
+        if (Math.hypot(this.player.x - dwx, this.player.y - dwy) < 55) {
+          currentLegend = 'PUERTA BLOQUEADA: Salidas selladas por seguridad. Elimina a todas las amenazas de la sala para abrir el paso.';
+          break;
+        }
+      }
+
+      if (!currentLegend) {
+        const remainingEnemies =
+          currentRoom.guards.filter((g) => g.state !== 'dead' && g.health > 0).length +
+          (currentRoom.boss && !currentRoom.boss.defeated && currentRoom.boss.health > 0 ? 1 : 0);
+        currentLegend = `⚠️ COMBATE EN CURSO: Sala bloqueada (${remainingEnemies} ${
+          remainingEnemies === 1 ? 'amenaza restante' : 'amenazas restantes'
+        }).`;
+      }
+    }
+
+    this.activeLegend = currentLegend;
   }
 
   private updateProjectiles(dt: number) {
@@ -800,6 +1016,14 @@ export class GameEngine {
       pt.y += pt.vy * dt;
       pt.alpha -= (pt.decay || 3.0) * dt;
       if (pt.alpha <= 0) this.particles.splice(i, 1);
+    }
+
+    // Update floating world notices
+    for (let i = this.floatingNotices.length - 1; i >= 0; i--) {
+      const fn = this.floatingNotices[i];
+      fn.y -= dt * 16;
+      fn.life -= dt;
+      if (fn.life <= 0) this.floatingNotices.splice(i, 1);
     }
   }
 
@@ -920,9 +1144,9 @@ export class GameEngine {
       ctx.restore();
     }
 
-    // 7. Draw Duck Mutant Protagonist
+    // 7. Draw Agent 007 Protagonist (Black Tuxedo, Bowtie, Walther PPK Silencer / Katana)
     const isMoving = (this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD']);
-    drawDuckPlayer(
+    drawAgent007Player(
       ctx,
       this.player.x,
       this.player.y,
@@ -933,9 +1157,26 @@ export class GameEngine {
       this.player.swingProgress
     );
 
+    // 8. Draw Floating World Notices (e.g. +12 BALAS, or MUNICIÓN LLENA)
+    for (const fn of this.floatingNotices) {
+      ctx.save();
+      const alpha = Math.min(1, fn.life / 0.35);
+      ctx.globalAlpha = Math.max(0, alpha);
+      ctx.font = 'bold 7px monospace';
+      ctx.textAlign = 'center';
+
+      const tw = ctx.measureText(fn.text).width;
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(Math.floor(fn.x - tw / 2 - 2), Math.floor(fn.y - 8), Math.ceil(tw + 4), 10);
+
+      ctx.fillStyle = fn.color;
+      ctx.fillText(fn.text, Math.floor(fn.x), Math.floor(fn.y));
+      ctx.restore();
+    }
+
     ctx.restore();
 
-    // 8. Draw Nuclear Throne Crosshair at mouse cursor
+    // 9. Draw Nuclear Throne Crosshair at mouse cursor
     drawNuclearCrosshair(ctx, this.mousePos.x, this.mousePos.y);
   }
 
@@ -1009,6 +1250,23 @@ export class GameEngine {
       }
     }
 
+    // Draw Animated Heavy Blast Security Doors
+    const doorPositions: Record<Direction, { x: number; y: number }> = {
+      N: DOOR_N,
+      S: DOOR_S,
+      W: DOOR_W,
+      E: DOOR_E,
+    };
+    for (const [dirKey, door] of Object.entries(room.doors)) {
+      if (!door) continue;
+      const dir = dirKey as Direction;
+      const pos = doorPositions[dir];
+      const dwx = rb.worldX + pos.x * TILE_SIZE;
+      const dwy = rb.worldY + pos.y * TILE_SIZE;
+      const anim = room.doorAnimProgress ?? (door.isLocked ? 1 : 0);
+      drawNuclearThroneDoor(ctx, dwx, dwy, dir, anim, door.isLocked);
+    }
+
     // Draw Items
     for (const item of room.items) {
       if (item.type === 'ammo' || item.type === 'explosives') {
@@ -1017,6 +1275,31 @@ export class GameEngine {
         drawRadCanister(ctx, item.x, item.y);
       } else {
         drawPixelRect(ctx, item.x - 5, item.y - 5, 10, 10, item.type === 'medkit' ? '#ff2020' : '#48bb78');
+      }
+
+      // Visual indicator if item cannot be collected due to full inventory
+      const dToPlayer = Math.hypot(this.player.x - item.x, this.player.y - item.y);
+      if (dToPlayer < 65) {
+        let badgeText: string | null = null;
+        if (item.type === 'ammo' && this.player.ammo >= this.player.maxAmmo) {
+          badgeText = '[MUNICIÓN LLENA]';
+        } else if (item.type === 'explosives' && this.player.explosivesAmmo >= 99) {
+          badgeText = '[EXPLOSIVOS LLENOS]';
+        } else if (item.type === 'medkit' && this.player.health >= this.player.maxHealth) {
+          badgeText = '[SALUD AL MÁXIMO]';
+        }
+
+        if (badgeText) {
+          ctx.save();
+          ctx.font = 'bold 6px monospace';
+          ctx.textAlign = 'center';
+          const tw = ctx.measureText(badgeText).width;
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(Math.floor(item.x - tw / 2 - 2), Math.floor(item.y - 17), Math.ceil(tw + 4), 8);
+          ctx.fillStyle = '#ef4444';
+          ctx.fillText(badgeText, Math.floor(item.x), Math.floor(item.y - 11));
+          ctx.restore();
+        }
       }
     }
 
@@ -1070,5 +1353,140 @@ export class GameEngine {
     ctx.stroke();
 
     ctx.restore();
+  }
+
+  // Room Lockdown & Door Mechanics
+  public isRoomHostile(room: RoomInstance): boolean {
+    const hasAliveGuards = room.guards.some((g) => g.state !== 'dead' && g.health > 0);
+    const hasAliveBoss = !!(room.boss && !room.boss.defeated && room.boss.health > 0);
+    return hasAliveGuards || hasAliveBoss;
+  }
+
+  private setRoomDoorsLocked(room: RoomInstance, locked: boolean) {
+    const doorPositions: Record<Direction, { x: number; y: number }> = {
+      N: DOOR_N,
+      S: DOOR_S,
+      W: DOOR_W,
+      E: DOOR_E,
+    };
+    const oppDirs: Record<Direction, Direction> = {
+      N: 'S',
+      S: 'N',
+      E: 'W',
+      W: 'E',
+    };
+
+    for (const dir of ['N', 'S', 'E', 'W'] as Direction[]) {
+      const door = room.doors[dir];
+      if (!door) continue;
+
+      door.isLocked = locked;
+      door.isOpen = !locked;
+
+      // Update tile in current room
+      const pos = doorPositions[dir];
+      if (room.tiles[pos.y] && room.tiles[pos.y][pos.x]) {
+        room.tiles[pos.y][pos.x].walkable = !locked;
+      }
+
+      // Also lock/unlock connecting door in neighbor room
+      if (door.targetRoomId) {
+        const neighbor = this.dungeon.rooms.get(door.targetRoomId);
+        if (neighbor) {
+          const oppDir = oppDirs[dir];
+          const oppDoor = neighbor.doors[oppDir];
+          if (oppDoor) {
+            oppDoor.isLocked = locked;
+            oppDoor.isOpen = !locked;
+          }
+          const oppPos = doorPositions[oppDir];
+          if (neighbor.tiles[oppPos.y] && neighbor.tiles[oppPos.y][oppPos.x]) {
+            neighbor.tiles[oppPos.y][oppPos.x].walkable = !locked;
+          }
+        }
+      }
+    }
+  }
+
+  private spawnDoorParticles(room: RoomInstance, color: string) {
+    const doorPositions: Record<Direction, { x: number; y: number }> = {
+      N: DOOR_N,
+      S: DOOR_S,
+      W: DOOR_W,
+      E: DOOR_E,
+    };
+    for (const [dir, door] of Object.entries(room.doors)) {
+      if (!door) continue;
+      const pos = doorPositions[dir as Direction];
+      const wx = room.bounds.worldX + pos.x * TILE_SIZE + TILE_SIZE / 2;
+      const wy = room.bounds.worldY + pos.y * TILE_SIZE + TILE_SIZE / 2;
+      this.createSparks(wx, wy, color);
+    }
+  }
+
+  private updateLockdown(dt: number) {
+    const currentRoom = this.dungeon.rooms.get(this.player.currentRoomId);
+    if (!currentRoom) return;
+
+    if (currentRoom.doorAnimProgress === undefined) {
+      currentRoom.doorAnimProgress = currentRoom.isLockedDown ? 1 : 0;
+    }
+    if (currentRoom.isLockedDown === undefined) {
+      currentRoom.isLockedDown = false;
+    }
+
+    const hasHostiles = this.isRoomHostile(currentRoom);
+
+    // Check if player has stepped inside room bounds (past the threshold entrance)
+    const relX = this.player.x - currentRoom.bounds.worldX;
+    const relY = this.player.y - currentRoom.bounds.worldY;
+    const pTx = Math.floor(relX / TILE_SIZE);
+    const pTy = Math.floor(relY / TILE_SIZE);
+    const isInsideRoom = pTx >= 1 && pTx <= ROOM_WIDTH - 2 && pTy >= 1 && pTy <= ROOM_HEIGHT - 2;
+
+    // 1. TRIGGER LOCKDOWN: Player enters hostile room with alive enemies
+    if (!currentRoom.isCleared && hasHostiles && !currentRoom.isLockedDown && isInsideRoom) {
+      currentRoom.isLockedDown = true;
+      this.setRoomDoorsLocked(currentRoom, true);
+      sound.playDoorLock();
+      this.screenShake = 6;
+      this.spawnDoorParticles(currentRoom, '#ef4444');
+      this.addFloatingNotice(
+        this.player.x,
+        this.player.y - 18,
+        '⚠️ ¡SALA BLOQUEADA! ELIMINA A LAS AMENAZAS',
+        '#ef4444'
+      );
+    }
+
+    // 2. CLEAR LOCKDOWN: All threats in current locked room defeated!
+    if (currentRoom.isLockedDown && !hasHostiles) {
+      currentRoom.isLockedDown = false;
+      currentRoom.isCleared = true;
+      this.setRoomDoorsLocked(currentRoom, false);
+      sound.playDoorUnlock();
+      this.screenShake = 3;
+      this.spawnDoorParticles(currentRoom, '#48bb78');
+
+      const clearMsg =
+        currentRoom.type === 'BOSS'
+          ? '🏆 ¡JEFE DERROTADO! ASCENSOR HABILITADO'
+          : '✅ ¡SALA DESPEJADA! PUERTAS DESBLOQUEADAS';
+      this.addFloatingNotice(this.player.x, this.player.y - 18, clearMsg, '#48bb78');
+    }
+
+    // 3. Smoothly animate door progress for all visited rooms
+    for (const room of this.dungeon.rooms.values()) {
+      if (room.doorAnimProgress === undefined) {
+        room.doorAnimProgress = room.isLockedDown ? 1 : 0;
+      }
+      const targetProgress = room.isLockedDown ? 1.0 : 0.0;
+      const speed = room.isLockedDown ? 4.0 : 2.5;
+      if (room.doorAnimProgress < targetProgress) {
+        room.doorAnimProgress = Math.min(targetProgress, room.doorAnimProgress + dt * speed);
+      } else if (room.doorAnimProgress > targetProgress) {
+        room.doorAnimProgress = Math.max(targetProgress, room.doorAnimProgress - dt * speed);
+      }
+    }
   }
 }

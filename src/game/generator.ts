@@ -347,6 +347,8 @@ export function generateDungeon(seed: number, floorLevel: number = 1): DungeonFl
       isCleared: rType === 'START',
       isVisited: node.id === startId,
       hasBeenRevealed: node.id === startId,
+      isLockedDown: false,
+      doorAnimProgress: 0,
       bounds: {
         worldX,
         worldY,

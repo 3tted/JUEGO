@@ -1,0 +1,176 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public profile and cumulative gameplay stats of a mutant agent.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "User UID matching auth.uid",
+          "maxLength": 128
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Player display name",
+          "maxLength": 64
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Avatar image URL",
+          "maxLength": 500
+        },
+        "highestFloor": {
+          "type": "number",
+          "description": "Highest wasteland level reached"
+        },
+        "totalRads": {
+          "type": "number",
+          "description": "Total radioactive canisters collected across all runs"
+        },
+        "runsPlayed": {
+          "type": "number",
+          "description": "Number of runs initiated"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account registration timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last profile update timestamp"
+        }
+      },
+      "required": ["id", "displayName", "highestFloor", "totalRads", "runsPlayed", "createdAt", "updatedAt"]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Record of a completed or failed wasteland run posted to the global hall of fame.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique run record ID",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "description": "User ID of the runner",
+          "maxLength": 128
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of runner",
+          "maxLength": 64
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Avatar URL",
+          "maxLength": 500
+        },
+        "floorLevel": {
+          "type": "number",
+          "description": "Wasteland floor reached"
+        },
+        "radsCollected": {
+          "type": "number",
+          "description": "Rads collected in this run"
+        },
+        "outcome": {
+          "type": "string",
+          "description": "Outcome of the run",
+          "enum": ["victory", "defeated"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Time the run was finished"
+        }
+      },
+      "required": ["id", "userId", "displayName", "floorLevel", "radsCollected", "outcome", "createdAt"]
+    },
+    "SavedGame": {
+      "title": "SavedGame",
+      "description": "Active saved game state containing exact player coordinates, floor seed, and inventory.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "User UID matching auth.uid",
+          "maxLength": 128
+        },
+        "floorLevel": {
+          "type": "number",
+          "description": "Floor level of the saved run"
+        },
+        "seed": {
+          "type": "number",
+          "description": "Random seed of the procedural dungeon"
+        },
+        "playerX": {
+          "type": "number",
+          "description": "Player X coordinate in world pixels"
+        },
+        "playerY": {
+          "type": "number",
+          "description": "Player Y coordinate in world pixels"
+        },
+        "currentRoomId": {
+          "type": "string",
+          "description": "ID of room where the player was located",
+          "maxLength": 64
+        },
+        "health": {
+          "type": "number",
+          "description": "Current player health"
+        },
+        "maxHealth": {
+          "type": "number",
+          "description": "Maximum player health"
+        },
+        "ammo": {
+          "type": "number",
+          "description": "Current player ammo"
+        },
+        "explosivesAmmo": {
+          "type": "number",
+          "description": "Current player explosives"
+        },
+        "intelCollected": {
+          "type": "number",
+          "description": "Total rads/intel collected in run"
+        },
+        "clearedRoomIds": {
+          "type": "array",
+          "description": "Array of cleared room IDs"
+        },
+        "visitedRoomIds": {
+          "type": "array",
+          "description": "Array of visited room IDs"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of save"
+        }
+      },
+      "required": ["userId", "floorLevel", "seed", "playerX", "playerY", "currentRoomId", "health", "maxHealth", "ammo", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Collection of user profiles containing stats and achievements"
+    },
+    "/leaderboard/{runId}": {
+      "schema": "LeaderboardEntry",
+      "description": "Global leaderboard of wasteland runs"
+    },
+    "/saves/{userId}": {
+      "schema": "SavedGame",
+      "description": "Active game save slot per user"
+    }
+  }
+}
