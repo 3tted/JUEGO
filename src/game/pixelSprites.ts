@@ -669,3 +669,220 @@ export function drawNuclearThroneDoor(
     ctx.restore();
   }
 }
+
+// 8. RETRO TACTICAL COMPUTER CONSOLE / HACKING TERMINAL (Mini arcade / rugged mainframe desk)
+export function drawConsoleTerminal(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  hacked: boolean,
+  animTick: number,
+  isNearby: boolean = false,
+  minigameType?: string
+) {
+  ctx.save();
+  ctx.translate(Math.floor(x), Math.floor(y));
+
+  // 1. Soft Oval Ground Shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.beginPath();
+  ctx.ellipse(0, 14, 18, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Pulse effect when player is nearby or idle
+  const pulse = Math.sin(animTick * 5) * 0.5 + 0.5;
+
+  // 2. Main Console Cabinet Body (Rugged dark metal mainframe casing)
+  // Outer black border
+  ctx.fillStyle = '#090d16';
+  ctx.fillRect(-15, -17, 30, 30);
+
+  // Metal body chassis
+  ctx.fillStyle = '#1e293b'; // slate 800
+  ctx.fillRect(-14, -16, 28, 28);
+
+  // Side reinforcement panels / metallic trims with copper rivets
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(-14, -16, 3, 28);
+  ctx.fillRect(11, -16, 3, 28);
+
+  // Rivets
+  ctx.fillStyle = '#94a3b8';
+  ctx.fillRect(-13, -14, 1, 1);
+  ctx.fillRect(-13, 8, 1, 1);
+  ctx.fillRect(12, -14, 1, 1);
+  ctx.fillRect(12, 8, 1, 1);
+
+  // 3. CRT Monitor Screen Housing (Upper Section)
+  ctx.fillStyle = '#020617'; // bezel
+  ctx.fillRect(-10, -14, 20, 15);
+
+  // Screen background color based on minigame type
+  let screenBg = '#052e16';
+  let screenTheme = '#22c55e';
+  if (minigameType === 'frequency_lock') {
+    screenBg = '#082f49';
+    screenTheme = '#38bdf8';
+  } else if (minigameType === 'memory_cipher') {
+    screenBg = '#422006';
+    screenTheme = '#f59e0b';
+  } else if (minigameType === 'wire_bypass') {
+    screenBg = '#2e1065';
+    screenTheme = '#c084fc';
+  }
+
+  if (hacked) {
+    screenBg = '#064e3b';
+  }
+
+  ctx.fillStyle = screenBg;
+  ctx.fillRect(-9, -13, 18, 13);
+
+  // Animated Scanlines & Phosphor Display
+  if (!hacked) {
+    if (minigameType === 'frequency_lock') {
+      // Oscilloscope Sine Wave
+      ctx.fillStyle = isNearby ? '#7dd3fc' : screenTheme;
+      for (let ox = -8; ox <= 8; ox += 2) {
+        const oy = Math.sin((ox + animTick * 12) * 0.45) * 3.5;
+        ctx.fillRect(ox, Math.floor(-7 + oy), 2, 1);
+      }
+    } else if (minigameType === 'memory_cipher') {
+      // Memory hex code lights
+      const step = Math.floor(animTick * 3) % 4;
+      ctx.fillStyle = isNearby ? '#fbbf24' : screenTheme;
+      ctx.fillRect(-7, -11, 4, 3);
+      ctx.fillRect(-1, -11, 4, 3);
+      ctx.fillRect(5, -11, 3, 3);
+      ctx.fillStyle = '#fef08a';
+      if (step === 0) ctx.fillRect(-7, -11, 4, 3);
+      else if (step === 1) ctx.fillRect(-1, -11, 4, 3);
+      else if (step === 2) ctx.fillRect(5, -11, 3, 3);
+      ctx.fillStyle = screenTheme;
+      ctx.fillRect(-7, -6, 12, 2);
+    } else if (minigameType === 'wire_bypass') {
+      // Electric conduit flow lines
+      ctx.fillStyle = isNearby ? '#e879f9' : screenTheme;
+      ctx.fillRect(-7, -7, 14, 2);
+      ctx.fillRect(-2, -12, 2, 11);
+      const pulseX = -7 + Math.floor((animTick * 18) % 14);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(pulseX, -7, 2, 2);
+    } else {
+      // Circuit maze probe / cyber lines
+      ctx.fillStyle = isNearby ? '#4ade80' : screenTheme;
+      const waveY = Math.floor(Math.sin(animTick * 8) * 2.5);
+      ctx.fillRect(-7, -11, 14, 1);
+      ctx.fillRect(-7, -9, 9, 1);
+      ctx.fillRect(-7, -7, 11, 1);
+      ctx.fillStyle = '#86efac';
+      const blipX = -6 + Math.floor((animTick * 14) % 12);
+      ctx.fillRect(blipX, -5 + waveY, 2, 2);
+      if (Math.sin(animTick * 10) > 0) {
+        ctx.fillStyle = '#4ade80';
+        ctx.fillRect(3, -9, 2, 2);
+      }
+    }
+  } else {
+    // Hacked screen: checkmark & [OK]
+    ctx.fillStyle = '#34d399';
+    ctx.fillRect(-4, -6, 2, 3);
+    ctx.fillRect(-2, -4, 2, 4);
+    ctx.fillRect(0, -7, 2, 7);
+    ctx.fillRect(2, -10, 2, 4);
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(-7, -12, 14, 1);
+  }
+
+  // CRT Glass highlight reflection
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.fillRect(-8, -12, 3, 11);
+
+  // 4. Slanted Control Deck / Keyboard (Bottom Half)
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(-12, 2, 24, 9);
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(-11, 3, 22, 7);
+
+  // Colorful Terminal Buttons & Trackball
+  ctx.fillStyle = '#eab308'; // Amber key
+  ctx.fillRect(-9, 4, 3, 2);
+  ctx.fillStyle = '#ef4444'; // Red key
+  ctx.fillRect(-5, 4, 3, 2);
+  ctx.fillStyle = '#3b82f6'; // Blue key
+  ctx.fillRect(-1, 4, 3, 2);
+  ctx.fillStyle = '#10b981'; // Green key
+  ctx.fillRect(3, 4, 3, 2);
+  ctx.fillStyle = '#a855f7'; // Purple key
+  ctx.fillRect(7, 4, 2, 2);
+
+  // Trackball / mini joystick
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(-2, 7, 4, 2);
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillRect(-1, 6, 2, 2);
+
+  // 5. LED Beacon / Antenna on Top
+  ctx.fillStyle = '#475569';
+  ctx.fillRect(-1, -20, 2, 4);
+  const beaconColor = hacked
+    ? '#10b981'
+    : isNearby
+    ? '#facc15'
+    : minigameType === 'frequency_lock'
+    ? '#38bdf8'
+    : minigameType === 'memory_cipher'
+    ? '#f59e0b'
+    : minigameType === 'wire_bypass'
+    ? '#c084fc'
+    : pulse > 0.5
+    ? '#22c55e'
+    : '#15803d';
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(-3, -23, 6, 4);
+  ctx.fillStyle = beaconColor;
+  ctx.fillRect(-2, -22, 4, 2);
+
+  // Light flare / glow when unhacked or nearby
+  if (!hacked && (isNearby || pulse > 0.4)) {
+    ctx.fillStyle = isNearby ? 'rgba(250, 204, 21, 0.4)' : `${beaconColor}44`;
+    ctx.beginPath();
+    ctx.arc(0, -21, isNearby ? 9 + pulse * 4 : 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 6. Floating Interactive Prompt Badge when nearby
+  if (isNearby) {
+    let badgeText = '[E] TERMINAL';
+    if (hacked) {
+      badgeText = 'CONSOLA [PIRATEADA]';
+    } else if (minigameType === 'frequency_lock') {
+      badgeText = '[E] ONDAS DE RADIO';
+    } else if (minigameType === 'memory_cipher') {
+      badgeText = '[E] SECUENCIA NEMÓNICA';
+    } else if (minigameType === 'wire_bypass') {
+      badgeText = '[E] DESVÍO DE CIRCUITOS';
+    } else {
+      badgeText = '[E] LABERINTO CRIPTO';
+    }
+
+    const badgeColor = hacked ? '#10b981' : isNearby ? '#facc15' : screenTheme;
+    ctx.save();
+    ctx.font = 'bold 7px monospace';
+    ctx.textAlign = 'center';
+    const tw = ctx.measureText(badgeText).width;
+    const by = -29 - Math.floor(pulse * 2);
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+    ctx.fillRect(-Math.ceil(tw / 2) - 4, by - 8, Math.ceil(tw) + 8, 11);
+    ctx.strokeStyle = badgeColor;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-Math.ceil(tw / 2) - 4, by - 8, Math.ceil(tw) + 8, 11);
+
+    ctx.fillStyle = badgeColor;
+    ctx.fillText(badgeText, 0, by);
+    ctx.restore();
+  }
+
+  ctx.restore();
+}

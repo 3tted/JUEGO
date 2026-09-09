@@ -16,9 +16,18 @@ import {
   KeyRound,
   MapPin,
   Heart,
+  Database,
+  UserCheck,
+  AlertCircle,
 } from 'lucide-react';
 import { useFirebase } from '../firebase/FirebaseContext';
-import { LeaderboardEntryData, subscribeToLeaderboard, SavedGameData } from '../firebase/service';
+import {
+  LeaderboardEntryData,
+  subscribeToLeaderboard,
+  SavedGameData,
+  UserProfileData,
+  subscribeToUserProfiles,
+} from '../firebase/service';
 
 interface LeaderboardModalProps {
   isOpen: boolean;
@@ -46,13 +55,16 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
   const [entries, setEntries] = useState<LeaderboardEntryData[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(true);
-  const [activeTab, setActiveTab] = useState<'save' | 'leaderboard' | 'profile'>('save');
+  const [registeredUsers, setRegisteredUsers] = useState<UserProfileData[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [activeTab, setActiveTab] = useState<'save' | 'leaderboard' | 'registros' | 'profile'>('save');
 
   // Email & Password Form State
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [faction, setFaction] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [saveActionMessage, setSaveActionMessage] = useState<string | null>(null);
@@ -61,12 +73,21 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
     if (!isOpen) return;
 
     setLoadingEntries(true);
-    const unsubscribe = subscribeToLeaderboard((data) => {
+    const unsubscribeLeaderboard = subscribeToLeaderboard((data) => {
       setEntries(data);
       setLoadingEntries(false);
     });
 
-    return () => unsubscribe();
+    setLoadingUsers(true);
+    const unsubscribeProfiles = subscribeToUserProfiles((data) => {
+      setRegisteredUsers(data);
+      setLoadingUsers(false);
+    });
+
+    return () => {
+      unsubscribeLeaderboard();
+      unsubscribeProfiles();
+    };
   }, [isOpen]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -87,16 +108,21 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
     try {
       if (authMode === 'login') {
         await loginWithEmail(email, password);
-        setSaveActionMessage('¡Sesión iniciada con éxito! Progreso sincronizado.');
+        setSaveActionMessage('¡Sesión iniciada con éxito! Registro sincronizado con la base de datos.');
       } else {
-        await registerWithEmail(email, password, displayName);
-        setSaveActionMessage('¡Cuenta creada con éxito! Progreso vinculado.');
+        await registerWithEmail(email, password, displayName, faction);
+        setSaveActionMessage('¡Registro guardado en la base de datos Firestore! (Campos opcionales procesados correctamente)');
+        setActiveTab('registros');
       }
       setEmail('');
       setPassword('');
+      setDisplayName('');
+      setFaction('');
     } catch (err: any) {
       const code = err?.code || '';
-      if (
+      if (code === 'auth/operation-not-allowed') {
+        setAuthError('auth/operation-not-allowed');
+      } else if (
         code === 'auth/invalid-credential' ||
         code === 'auth/wrong-password' ||
         code === 'auth/user-not-found'
@@ -109,7 +135,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
       } else if (code === 'auth/invalid-email') {
         setAuthError('El correo ingresado no tiene un formato válido.');
       } else {
-        setAuthError(err?.message || 'Error al conectar. Inténtalo de nuevo.');
+        setAuthError(err?.message || 'Error al conectar con la base de datos. Inténtalo de nuevo.');
       }
     } finally {
       setAuthLoading(false);
@@ -148,14 +174,17 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   return (
     <div
       id="leaderboard-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xs p-3 sm:p-4 select-none font-['Press_Start_2P']"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xs p-3 sm:p-4 font-['Press_Start_2P']"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         id="leaderboard-modal"
-        className="w-full max-w-xl bg-[#14100e] border-4 border-[#3d322a] p-4 shadow-[0_0_35px_rgba(0,0,0,0.95)] text-[#f4ecd8] flex flex-col max-h-[92vh]"
+        className="w-full max-w-xl bg-[#14100e] border-4 border-[#3d322a] p-4 shadow-[0_0_35px_rgba(0,0,0,0.95)] text-[#f4ecd8] flex flex-col max-h-[92vh] select-auto cursor-auto"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+        onKeyUp={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b-2 border-[#3d322a] pb-3 mb-3">
@@ -268,52 +297,119 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   </div>
                 </div>
 
-                <form onSubmit={handleEmailAuth} className="flex flex-col gap-2">
+                <form
+                  onSubmit={handleEmailAuth}
+                  className="flex flex-col gap-2 select-text cursor-auto"
+                  onKeyDown={(e) => e.stopPropagation()}
+                  onKeyUp={(e) => e.stopPropagation()}
+                >
                   {authMode === 'register' && (
-                    <div className="flex items-center bg-[#100d0b] border border-[#3d322a] px-2 py-1.5 focus-within:border-[#e2b044]">
-                      <UserIcon className="w-3.5 h-3.5 text-[#8c786a] mr-2 shrink-0" />
-                      <input
-                        id="auth-display-name-input"
-                        type="text"
-                        placeholder="Nombre o Alias de Agente"
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
-                        className="bg-transparent text-[8px] text-[#f4ecd8] outline-none w-full"
-                      />
-                    </div>
+                    <>
+                      <div className="flex items-center bg-[#100d0b] border border-[#3d322a] px-2 py-1.5 focus-within:border-[#e2b044] cursor-text">
+                        <UserIcon className="w-3.5 h-3.5 text-[#8c786a] mr-2 shrink-0" />
+                        <input
+                          id="auth-display-name-input"
+                          name="displayName"
+                          type="text"
+                          placeholder="Nombre o Alias de Agente (opcional)"
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          onKeyUp={(e) => e.stopPropagation()}
+                          className="bg-transparent text-[8px] text-[#f4ecd8] outline-none w-full placeholder:text-[#6e5d52] select-text cursor-text"
+                        />
+                        <span className="text-[7px] text-[#8c786a] uppercase ml-1 shrink-0 bg-[#1e1713] px-1.5 py-0.5 rounded border border-[#3d322a] select-none pointer-events-none">
+                          Opcional
+                        </span>
+                      </div>
+
+                      <div className="flex items-center bg-[#100d0b] border border-[#3d322a] px-2 py-1.5 focus-within:border-[#e2b044] cursor-text">
+                        <Shield className="w-3.5 h-3.5 text-[#8c786a] mr-2 shrink-0" />
+                        <input
+                          id="auth-faction-input"
+                          name="faction"
+                          type="text"
+                          placeholder="Facción / Escuadrón (opcional)"
+                          value={faction}
+                          onChange={(e) => setFaction(e.target.value)}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          onKeyUp={(e) => e.stopPropagation()}
+                          className="bg-transparent text-[8px] text-[#f4ecd8] outline-none w-full placeholder:text-[#6e5d52] select-text cursor-text"
+                        />
+                        <span className="text-[7px] text-[#8c786a] uppercase ml-1 shrink-0 bg-[#1e1713] px-1.5 py-0.5 rounded border border-[#3d322a] select-none pointer-events-none">
+                          Opcional
+                        </span>
+                      </div>
+                    </>
                   )}
 
-                  <div className="flex items-center bg-[#100d0b] border border-[#3d322a] px-2 py-1.5 focus-within:border-[#e2b044]">
+                  <div className="flex items-center bg-[#100d0b] border border-[#3d322a] px-2 py-1.5 focus-within:border-[#e2b044] cursor-text">
                     <Mail className="w-3.5 h-3.5 text-[#8c786a] mr-2 shrink-0" />
                     <input
                       id="auth-email-input"
+                      name="email"
                       type="email"
                       required
-                      placeholder="correo@wasteland.net"
+                      placeholder="correo@wasteland.net (obligatorio)"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="bg-transparent text-[8px] text-[#f4ecd8] outline-none w-full"
+                      onKeyDown={(e) => e.stopPropagation()}
+                      onKeyUp={(e) => e.stopPropagation()}
+                      className="bg-transparent text-[8px] text-[#f4ecd8] outline-none w-full placeholder:text-[#6e5d52] select-text cursor-text"
                     />
                   </div>
 
-                  <div className="flex items-center bg-[#100d0b] border border-[#3d322a] px-2 py-1.5 focus-within:border-[#e2b044]">
+                  <div className="flex items-center bg-[#100d0b] border border-[#3d322a] px-2 py-1.5 focus-within:border-[#e2b044] cursor-text">
                     <KeyRound className="w-3.5 h-3.5 text-[#8c786a] mr-2 shrink-0" />
                     <input
                       id="auth-password-input"
+                      name="password"
                       type="password"
                       required
-                      placeholder="Contraseña (mínimo 6 caracteres)"
+                      placeholder="Contraseña mínimo 6 caracteres (obligatorio)"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="bg-transparent text-[8px] text-[#f4ecd8] outline-none w-full"
+                      onKeyDown={(e) => e.stopPropagation()}
+                      onKeyUp={(e) => e.stopPropagation()}
+                      className="bg-transparent text-[8px] text-[#f4ecd8] outline-none w-full placeholder:text-[#6e5d52] select-text cursor-text"
                     />
                   </div>
 
-                  {authError && (
-                    <div className="bg-red-950/80 border border-red-500/80 text-red-200 text-[7px] p-2 leading-relaxed">
-                      ⚠️ {authError}
+                  {authError && authError === 'auth/operation-not-allowed' ? (
+                    <div className="bg-[#241212] border-2 border-[#ef4444] text-[#fecaca] text-[7.5px] p-2.5 flex flex-col gap-2 rounded">
+                      <div className="flex items-center gap-1.5 text-[#f87171] font-bold text-[8px] uppercase">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>Proveedor de Correo no habilitado en Firebase</span>
+                      </div>
+                      <p className="leading-relaxed text-[#fca5a5]">
+                        Firebase bloquea el inicio con correo/contraseña por defecto hasta que lo habilitas en su consola.
+                      </p>
+                      <div className="bg-[#180c0c] border border-[#7f1d1d] p-2 rounded flex flex-col gap-1 text-[7px] text-[#fed7aa]">
+                        <span className="font-bold text-[#fbbf24]">CÓMO HABILITARLO EN 3 PASOS:</span>
+                        <span>1. Entra a tu Firebase Console &gt; <strong>Authentication</strong>.</span>
+                        <span>2. Ve a la pestaña <strong>Sign-in method</strong> (Métodos de acceso).</span>
+                        <span>3. Haz clic en <strong>Correo electrónico/Contraseña</strong>, activa el interruptor de <strong>Habilitar</strong> y pulsa <strong>Guardar</strong>.</span>
+                      </div>
+                      <div className="flex items-center justify-between flex-wrap gap-1.5 pt-1">
+                        <a
+                          href="https://console.firebase.google.com/project/ai-studio-agente077roguees-207f82bd-d188-49a9-97cd-3571fe51477e/authentication/providers"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2 py-1 bg-[#ef4444] hover:bg-[#dc2626] text-white font-bold rounded text-[7px] inline-flex items-center gap-1"
+                        >
+                          ABRIR CONSOLA FIREBASE &rarr;
+                        </a>
+                        <span className="text-[7px] text-[#9ca3af]">
+                          O utiliza <strong>Google Sign-In</strong> arriba.
+                        </span>
+                      </div>
                     </div>
-                  )}
+                  ) : authError ? (
+                    <div className="bg-red-950/80 border border-red-500/80 text-red-200 text-[7px] p-2 leading-relaxed flex items-center gap-1.5">
+                      <AlertCircle className="w-3 h-3 text-red-400 shrink-0" />
+                      <span>{authError}</span>
+                    </div>
+                  ) : null}
 
                   <button
                     id="auth-submit-btn"
@@ -329,7 +425,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     <span>
                       {authMode === 'login'
                         ? 'INICIAR SESIÓN Y CARGAR PARTIDA'
-                        : 'CREAR CUENTA Y GUARDAR PROGRESO'}
+                        : 'CREAR REGISTRO EN BD Y GUARDAR PROGRESO'}
                     </span>
                   </button>
                 </form>
@@ -369,6 +465,18 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             }`}
           >
             TOP SURVIVORS
+          </button>
+          <button
+            id="tab-registros-btn"
+            onClick={() => setActiveTab('registros')}
+            className={`flex-1 py-1.5 text-[8px] sm:text-[9px] border-2 uppercase transition-colors cursor-pointer flex items-center justify-center gap-1 ${
+              activeTab === 'registros'
+                ? 'bg-[#3d322a] border-[#e2b044] text-[#e2b044]'
+                : 'bg-[#181311] border-[#2a221d] text-[#8c786a] hover:text-[#d4c5b9]'
+            }`}
+          >
+            <Database className="w-3 h-3" />
+            REGISTROS EN BD {registeredUsers.length > 0 && `(${registeredUsers.length})`}
           </button>
           <button
             id="tab-profile-btn"
@@ -560,6 +668,115 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'registros' && (
+            <div className="py-1 flex flex-col gap-3">
+              {/* Active User Record in Firestore */}
+              {user && userProfile && (
+                <div className="bg-[#181311] border-2 border-[#4ade80]/70 p-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between border-b border-[#3d322a] pb-2">
+                    <span className="text-[9px] text-[#4ade80] font-bold flex items-center gap-1.5">
+                      <UserCheck className="w-3.5 h-3.5 text-[#4ade80]" />
+                      TU REGISTRO VIVO EN FIRESTORE
+                    </span>
+                    <span className="text-[7px] text-[#4ade80] bg-[#14532d]/40 px-2 py-0.5 rounded border border-[#4ade80]/50">
+                      🟢 GUARDADO EN BASE DE DATOS
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[8px]">
+                    <div className="bg-[#100d0b] border border-[#3d322a] p-2 flex flex-col gap-0.5">
+                      <span className="text-[#8c786a]">DOCUMENTO UID</span>
+                      <span className="text-[#f4ecd8] font-mono truncate">{userProfile.id}</span>
+                    </div>
+                    <div className="bg-[#100d0b] border border-[#3d322a] p-2 flex flex-col gap-0.5">
+                      <span className="text-[#8c786a]">ALIAS / NOMBRE (CAMPO OPCIONAL)</span>
+                      <span className="text-[#e2b044] font-bold">
+                        {userProfile.displayName || (
+                          <span className="text-[#8c786a] italic font-normal">(Opcional dejado vacío - Registrado en BD)</span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="bg-[#100d0b] border border-[#3d322a] p-2 flex flex-col gap-0.5">
+                      <span className="text-[#8c786a]">CORREO DE CONTACTO</span>
+                      <span className="text-[#f4ecd8]">{userProfile.email || user.email || 'No especificado'}</span>
+                    </div>
+                    <div className="bg-[#100d0b] border border-[#3d322a] p-2 flex flex-col gap-0.5">
+                      <span className="text-[#8c786a]">FACCIÓN / ESCUADRÓN (CAMPO OPCIONAL)</span>
+                      <span className="text-[#f4ecd8]">
+                        {userProfile.faction || (
+                          <span className="text-[#8c786a] italic font-normal">(Opcional dejado vacío - Registrado en BD)</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* All Registered Agent Documents in Database */}
+              <div className="bg-[#181311] border border-[#3d322a] p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between border-b border-[#3d322a] pb-2">
+                  <span className="text-[9px] text-[#f4ecd8] font-bold flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-[#e2b044]" />
+                    REGISTROS EN LA BASE DE DATOS (/users)
+                  </span>
+                  <span className="text-[7.5px] text-[#8c786a]">
+                    Total: {registeredUsers.length} registros persistidos
+                  </span>
+                </div>
+
+                {loadingUsers ? (
+                  <div className="py-8 flex flex-col items-center justify-center gap-2 text-[#8c786a]">
+                    <RefreshCw className="w-5 h-5 animate-spin text-[#e2b044]" />
+                    <span className="text-[8px]">CONSULTANDO COLECCIÓN DE REGISTROS EN FIRESTORE...</span>
+                  </div>
+                ) : registeredUsers.length === 0 ? (
+                  <div className="py-6 text-center text-[#8c786a] text-[8.5px]">
+                    No hay registros aún en la colección /users.
+                    <br />
+                    ¡Crea una cuenta arriba para agregar el primer registro a la base de datos!
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5 max-h-60 overflow-y-auto">
+                    <div className="grid grid-cols-12 text-[7.5px] text-[#8c786a] px-2 py-1 border-b border-[#2a221d]">
+                      <span className="col-span-1">#</span>
+                      <span className="col-span-4">NOMBRE / ALIAS</span>
+                      <span className="col-span-4">CORREO</span>
+                      <span className="col-span-3 text-right">ESTADO BD</span>
+                    </div>
+                    {registeredUsers.map((u, idx) => (
+                      <div
+                        key={u.id || idx}
+                        className={`grid grid-cols-12 items-center px-2 py-1.5 border text-[8px] ${
+                          u.id === user?.uid
+                            ? 'bg-[#1f291e] border-[#4ade80]/60 text-[#f4ecd8]'
+                            : 'bg-[#100d0b] border-[#2a221d] text-[#d4c5b9]'
+                        }`}
+                      >
+                        <span className="col-span-1 text-[#8c786a]">{idx + 1}</span>
+                        <div className="col-span-4 truncate font-medium">
+                          {u.displayName ? (
+                            <span className="text-[#f4ecd8]">{u.displayName}</span>
+                          ) : (
+                            <span className="text-[#8c786a] italic">(Opcional vacío)</span>
+                          )}
+                          {u.faction && (
+                            <span className="text-[7px] text-[#e2b044] block truncate">[{u.faction}]</span>
+                          )}
+                        </div>
+                        <span className="col-span-4 truncate text-[#8c786a]">
+                          {u.email || (u.id.substring(0, 10) + '...')}
+                        </span>
+                        <span className="col-span-3 text-right text-[7px] text-[#4ade80]">
+                          🟢 FIRESTORE
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

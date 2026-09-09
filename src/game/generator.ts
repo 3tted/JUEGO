@@ -326,6 +326,55 @@ export function generateDungeon(seed: number, floorLevel: number = 1): DungeonFl
     const cameras = template.spawnCameras ? template.spawnCameras(worldX, worldY) : [];
     const lasers = template.spawnLasers ? template.spawnLasers(worldX, worldY) : [];
     const terminals = template.spawnTerminals ? template.spawnTerminals(worldX, worldY) : [];
+
+    // Ensure relevant rooms have terminal consoles so players can access them
+    if (
+      terminals.length === 0 &&
+      (rType === 'START' ||
+        rType === 'SERVER_HUB' ||
+        rType === 'LABORATORY' ||
+        rType === 'CCTV_ROOM' ||
+        rType === 'PATROL' ||
+        rType === 'ARMORY')
+    ) {
+      const candidatePositions = [
+        { x: 3, y: 3 },
+        { x: 11, y: 3 },
+        { x: 3, y: 7 },
+        { x: 11, y: 7 },
+        { x: 7, y: 2 },
+      ];
+      const minigameTypes: ('circuit_maze' | 'frequency_lock' | 'memory_cipher' | 'wire_bypass')[] = [
+        'circuit_maze',
+        'frequency_lock',
+        'memory_cipher',
+        'wire_bypass',
+      ];
+      const randomMinigame = minigameTypes[Math.floor(Math.random() * minigameTypes.length)];
+      const minigameLabels: Record<string, string> = {
+        circuit_maze: 'Terminal: Laberinto Criptográfico',
+        frequency_lock: 'Terminal: Sintonizador de Ondas',
+        memory_cipher: 'Terminal: Secuencia Nemónica',
+        wire_bypass: 'Terminal: Derivación de Conductos',
+      };
+
+      for (const cp of candidatePositions) {
+        if (tiles[cp.y] && tiles[cp.y][cp.x] && tiles[cp.y][cp.x].walkable) {
+          terminals.push({
+            id: `term_${node.id}_${cp.x}_${cp.y}`,
+            x: worldX + cp.x * TILE_SIZE + 24,
+            y: worldY + cp.y * TILE_SIZE + 24,
+            hacked: false,
+            hackProgress: 0,
+            type: rType === 'SERVER_HUB' ? 'map_reveal' : rType === 'LABORATORY' ? 'boss_override' : 'alarm_reset',
+            label: minigameLabels[randomMinigame] || 'Consola de Enlace Táctico',
+            minigameType: randomMinigame,
+          });
+          break;
+        }
+      }
+    }
+
     const items = template.spawnItems ? template.spawnItems(worldX, worldY) : [];
     const boss = template.spawnBoss ? template.spawnBoss(worldX, worldY) : undefined;
 

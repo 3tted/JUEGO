@@ -218,6 +218,15 @@ export const HUD: React.FC<HUDProps> = ({
           </div>
         )}
 
+        {/* Center: Controls Banner */}
+        <div className="hidden md:flex items-center gap-2 bg-black/80 border border-stone-700 px-3 py-1 rounded text-[8px] text-stone-300">
+          <span className="text-emerald-400 font-bold">WASD</span>
+          <span>MOVER</span>
+          <span className="text-stone-600">•</span>
+          <span className="text-amber-400 font-bold">FLECHITAS ↑↓←→</span>
+          <span>DISPARAR</span>
+        </div>
+
         {/* Floor Level */}
         <div className="bg-black/80 border-2 border-black p-1.5 rounded text-stone-300 text-xs font-bold">
           WASTELAND 1-{dungeon.floorLevel}

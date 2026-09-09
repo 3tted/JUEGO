@@ -82,6 +82,12 @@ export interface LaserBeam {
   horizontal: boolean;
 }
 
+export type TerminalMinigameType =
+  | 'circuit_maze'
+  | 'frequency_lock'
+  | 'memory_cipher'
+  | 'wire_bypass';
+
 export interface TerminalEntity {
   id: string;
   x: number;
@@ -90,6 +96,7 @@ export interface TerminalEntity {
   hackProgress: number; // 0 to 100
   type: 'alarm_reset' | 'map_reveal' | 'disable_cameras' | 'boss_override';
   label: string;
+  minigameType?: TerminalMinigameType;
 }
 
 export interface ItemDrop {

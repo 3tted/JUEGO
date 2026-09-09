@@ -12,7 +12,17 @@
         },
         "displayName": {
           "type": "string",
-          "description": "Player display name",
+          "description": "Player display name (optional)",
+          "maxLength": 64
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address",
+          "maxLength": 128
+        },
+        "faction": {
+          "type": "string",
+          "description": "Optional faction or squad tag",
           "maxLength": 64
         },
         "photoURL": {
@@ -43,7 +53,7 @@
           "description": "Last profile update timestamp"
         }
       },
-      "required": ["id", "displayName", "highestFloor", "totalRads", "runsPlayed", "createdAt", "updatedAt"]
+      "required": ["id", "highestFloor", "totalRads", "runsPlayed", "createdAt", "updatedAt"]
     },
     "LeaderboardEntry": {
       "title": "LeaderboardEntry",

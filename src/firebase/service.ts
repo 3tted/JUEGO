@@ -15,7 +15,9 @@ import { db, handleFirestoreError, OperationType } from './config';
 
 export interface UserProfileData {
   id: string;
-  displayName: string;
+  displayName?: string;
+  email?: string;
+  faction?: string;
   photoURL?: string;
   highestFloor: number;
   totalRads: number;
@@ -64,12 +66,57 @@ export async function getUserProfile(userId: string): Promise<UserProfileData | 
   }
 }
 
+export async function createUserRecord(
+  userId: string,
+  email: string,
+  displayName?: string,
+  faction?: string,
+  photoURL?: string
+): Promise<UserProfileData> {
+  const path = `users/${userId}`;
+  try {
+    const docRef = doc(db, 'users', userId);
+    const newProfile: Record<string, any> = {
+      id: userId,
+      highestFloor: 1,
+      totalRads: 0,
+      runsPlayed: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    // Optional field: displayName (can be omitted or set if provided)
+    if (displayName !== undefined && displayName !== null && displayName.trim() !== '') {
+      newProfile.displayName = displayName.trim().slice(0, 64);
+    }
+    // Optional field: email
+    if (email && email.trim() !== '') {
+      newProfile.email = email.trim().slice(0, 128);
+    }
+    // Optional field: faction
+    if (faction !== undefined && faction !== null && faction.trim() !== '') {
+      newProfile.faction = faction.trim().slice(0, 64);
+    }
+    // Optional field: photoURL
+    if (photoURL && photoURL.trim() !== '') {
+      newProfile.photoURL = photoURL.trim().slice(0, 500);
+    }
+
+    await setDoc(docRef, newProfile);
+    return newProfile as UserProfileData;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+}
+
 export async function upsertUserProfile(
   userId: string,
-  displayName: string,
+  displayName: string | undefined,
   photoURL: string | undefined,
   runFloor: number,
-  runRads: number
+  runRads: number,
+  email?: string,
+  faction?: string
 ): Promise<UserProfileData> {
   const path = `users/${userId}`;
   try {
@@ -79,29 +126,45 @@ export async function upsertUserProfile(
     if (!existing.exists()) {
       const newProfile: Record<string, any> = {
         id: userId,
-        displayName: displayName.slice(0, 64) || 'Mutant Runner',
         highestFloor: Math.max(1, runFloor),
         totalRads: Math.max(0, runRads),
         runsPlayed: 1,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
-      if (photoURL) {
-        newProfile.photoURL = photoURL.slice(0, 500);
+      if (displayName !== undefined && displayName !== null && displayName.trim() !== '') {
+        newProfile.displayName = displayName.trim().slice(0, 64);
+      }
+      if (email && email.trim() !== '') {
+        newProfile.email = email.trim().slice(0, 128);
+      }
+      if (faction && faction.trim() !== '') {
+        newProfile.faction = faction.trim().slice(0, 64);
+      }
+      if (photoURL && photoURL.trim() !== '') {
+        newProfile.photoURL = photoURL.trim().slice(0, 500);
       }
       await setDoc(docRef, newProfile);
       return newProfile as UserProfileData;
     } else {
       const curr = existing.data() as UserProfileData;
       const updatePayload: Record<string, any> = {
-        displayName: displayName.slice(0, 64) || curr.displayName,
         highestFloor: Math.max(curr.highestFloor || 1, runFloor),
         totalRads: (curr.totalRads || 0) + runRads,
         runsPlayed: (curr.runsPlayed || 0) + 1,
         updatedAt: serverTimestamp(),
       };
-      if (photoURL) {
-        updatePayload.photoURL = photoURL.slice(0, 500);
+      if (displayName !== undefined && displayName !== null && displayName.trim() !== '') {
+        updatePayload.displayName = displayName.trim().slice(0, 64);
+      }
+      if (email && email.trim() !== '' && !curr.email) {
+        updatePayload.email = email.trim().slice(0, 128);
+      }
+      if (faction && faction.trim() !== '' && !curr.faction) {
+        updatePayload.faction = faction.trim().slice(0, 64);
+      }
+      if (photoURL && photoURL.trim() !== '') {
+        updatePayload.photoURL = photoURL.trim().slice(0, 500);
       }
       await updateDoc(docRef, updatePayload);
       return { ...curr, ...updatePayload };
@@ -109,6 +172,25 @@ export async function upsertUserProfile(
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
+}
+
+export function subscribeToUserProfiles(callback: (entries: UserProfileData[]) => void): () => void {
+  const path = 'users';
+  const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(50));
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const entries: UserProfileData[] = [];
+      snapshot.forEach((docSnap) => {
+        entries.push(docSnap.data() as UserProfileData);
+      });
+      callback(entries);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, path);
+    }
+  );
 }
 
 export async function submitLeaderboardRun(

@@ -140,17 +140,16 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({ onClose })
         </div>
 
         <div className="space-y-3 text-slate-300 mb-6">
-          <div className="p-2.5 bg-slate-950 rounded border border-slate-800 flex items-center justify-between">
-            <span className="text-slate-400 font-bold">MOVIMIENTO:</span>
-            <span className="text-cyan-300">[W, A, S, D] o FLECHAS</span>
+          <div className="p-2.5 bg-slate-950 rounded border border-emerald-500/40 flex items-center justify-between">
+            <span className="text-emerald-400 font-bold">MOVIMIENTO (8 DIR):</span>
+            <span className="text-white font-mono">[W, A, S, D] (Sin ratón)</span>
           </div>
-          <div className="p-2.5 bg-slate-950 rounded border border-slate-800 flex items-center justify-between">
-            <span className="text-slate-400 font-bold">APUNTAR Y DISPARAR:</span>
-            <span className="text-cyan-300">RATÓN (Click Izquierdo)</span>
+          <div className="p-2.5 bg-slate-950 rounded border border-amber-500/40 flex items-center justify-between">
+            <span className="text-amber-400 font-bold">DISPARO CONTINUO:</span>
+            <span className="text-white font-mono">[FLECHITAS] ↑ ↓ ← →</span>
           </div>
-          <div className="p-2.5 bg-slate-950 rounded border border-slate-800 flex items-center justify-between">
-            <span className="text-slate-400 font-bold">SIGILO (PASO SILENCIOSO):</span>
-            <span className="text-cyan-300">MANTENER [SHIFT / MAYÚS]</span>
+          <div className="p-2.5 bg-slate-950/70 rounded border border-slate-800 text-[11px] text-slate-400">
+            ⚡ <span className="text-amber-300 font-bold">ACCIONES SIMULTÁNEAS:</span> Muévete en cualquier dirección con WASD mientras mantienes presionadas las flechitas para disparar en ráfaga automática hacia otro lado.
           </div>
           <div className="p-2.5 bg-slate-950 rounded border border-slate-800 flex items-center justify-between">
             <span className="text-slate-400 font-bold">ESQUIVE TÁCTICO (DASH):</span>

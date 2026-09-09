@@ -4,6 +4,7 @@ import { auth, loginWithGoogle, loginWithEmail as loginWithEmailAuth, registerWi
 import {
   getUserProfile,
   upsertUserProfile,
+  createUserRecord,
   UserProfileData,
   SavedGameData,
   getSavedGame,
@@ -18,7 +19,7 @@ interface FirebaseContextType {
   loading: boolean;
   login: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
-  registerWithEmail: (email: string, pass: string, displayName?: string) => Promise<void>;
+  registerWithEmail: (email: string, pass: string, displayName?: string, faction?: string) => Promise<UserProfileData | undefined>;
   logout: () => Promise<void>;
   saveRun: (floorLevel: number, radsCollected: number, outcome: 'victory' | 'defeated') => Promise<void>;
   saveGameProgress: (data: Omit<SavedGameData, 'userId' | 'updatedAt'>) => Promise<boolean>;
@@ -34,7 +35,7 @@ const FirebaseContext = createContext<FirebaseContextType>({
   loading: true,
   login: async () => {},
   loginWithEmail: async () => {},
-  registerWithEmail: async () => {},
+  registerWithEmail: async () => undefined,
   logout: async () => {},
   saveRun: async () => {},
   saveGameProgress: async () => false,
@@ -62,10 +63,11 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } else {
         const newProf = await upsertUserProfile(
           currentUser.uid,
-          currentUser.displayName || currentUser.email?.split('@')[0] || 'Mutant Scout',
+          currentUser.displayName || undefined,
           currentUser.photoURL || undefined,
           1,
-          0
+          0,
+          currentUser.email || undefined
         );
         setUserProfile(newProf);
       }
@@ -82,7 +84,16 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         await fetchUserData(currentUser);
       } else {
         setUserProfile(null);
-        setSavedGame(null);
+        try {
+          const localSaveStr = localStorage.getItem('mutant_roguelike_saved_game');
+          if (localSaveStr) {
+            setSavedGame(JSON.parse(localSaveStr));
+          } else {
+            setSavedGame(null);
+          }
+        } catch {
+          setSavedGame(null);
+        }
       }
       setLoading(false);
     });
@@ -108,9 +119,15 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const registerWithEmail = async (email: string, pass: string, displayName?: string) => {
+  const registerWithEmail = async (email: string, pass: string, displayName?: string, faction?: string) => {
     try {
-      await registerWithEmailAuth(email, pass, displayName);
+      const authUser = await registerWithEmailAuth(email, pass, displayName);
+      // Guarantee that the record is immediately created and persists in Firestore database
+      const profile = await createUserRecord(authUser.uid, email, displayName, faction);
+      if (profile) {
+        setUserProfile(profile);
+      }
+      return profile;
     } catch (err) {
       console.error('Email registration failed:', err);
       throw err;
@@ -155,36 +172,66 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const saveGameProgress = async (data: Omit<SavedGameData, 'userId' | 'updatedAt'>): Promise<boolean> => {
-    if (!user) return false;
+    const localSave: SavedGameData = {
+      ...data,
+      userId: user?.uid || 'local_agent',
+      updatedAt: new Date().toISOString() as any,
+    };
+    try {
+      localStorage.setItem('mutant_roguelike_saved_game', JSON.stringify(localSave));
+      setSavedGame(localSave);
+    } catch (e) {
+      console.warn('Could not cache save to localStorage:', e);
+    }
+
+    if (!user) return true;
     try {
       await saveGameFirestore(user.uid, data);
       await refreshSavedGame();
       return true;
     } catch (err) {
-      console.error('Failed to save game progress:', err);
-      return false;
+      console.error('Failed to save game progress to Firestore:', err);
+      return true;
     }
   };
 
   const loadSavedGame = async (): Promise<SavedGameData | null> => {
-    if (!user) return null;
-    try {
-      const save = await getSavedGame(user.uid);
-      setSavedGame(save || null);
-      return save || null;
-    } catch (err) {
-      console.error('Failed to load saved game:', err);
-      return null;
+    if (user) {
+      try {
+        const save = await getSavedGame(user.uid);
+        if (save) {
+          setSavedGame(save);
+          return save;
+        }
+      } catch (err) {
+        console.warn('Failed to load saved game from Firestore, checking local backup:', err);
+      }
     }
+    try {
+      const local = localStorage.getItem('mutant_roguelike_saved_game');
+      if (local) {
+        const parsed = JSON.parse(local) as SavedGameData;
+        setSavedGame(parsed);
+        return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return null;
   };
 
   const deleteSavedGameProgress = async () => {
+    try {
+      localStorage.removeItem('mutant_roguelike_saved_game');
+      setSavedGame(null);
+    } catch {
+      // ignore
+    }
     if (!user) return;
     try {
       await deleteSavedGameFirestore(user.uid);
-      setSavedGame(null);
     } catch (err) {
-      console.error('Failed to delete saved game:', err);
+      console.error('Failed to delete saved game from Firestore:', err);
     }
   };
 

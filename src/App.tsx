@@ -2,11 +2,12 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { generateDungeon } from './game/generator';
 import { GameEngine } from './game/engine';
 import { sound } from './game/audio';
-import { DungeonFloor, PlayerState, RoomInstance } from './types';
+import { DungeonFloor, PlayerState, RoomInstance, TerminalEntity } from './types';
 import { HUD } from './components/HUD';
 import { BlueprintViewer } from './components/BlueprintViewer';
 import { LevelCompletedModal, GameOverModal, InstructionsModal } from './components/Modals';
 import { LeaderboardModal } from './components/LeaderboardModal';
+import { TerminalMinigameModal } from './components/TerminalMinigameModal';
 import { VirtualControls } from './components/VirtualControls';
 import { HelpCircle, Route, Trophy } from 'lucide-react';
 import { useFirebase } from './firebase/FirebaseContext';
@@ -36,6 +37,8 @@ export default function App() {
   const [interactionPrompt, setInteractionPrompt] = useState<string | null>(null);
   const [pathVerifiedBadge, setPathVerifiedBadge] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [activeTerminal, setActiveTerminal] = useState<TerminalEntity | null>(null);
+  const [showTerminalModal, setShowTerminalModal] = useState<boolean>(false);
 
   // Initialize or Rebuild Engine
   const startEngine = useCallback(
@@ -89,6 +92,11 @@ export default function App() {
           },
           onRoomEntered: (room) => {
             setCurrentRoom(room);
+          },
+          onTerminalOpen: (term) => {
+            engine.pause();
+            setActiveTerminal(term);
+            setShowTerminalModal(true);
           },
         },
         restoredSave
@@ -155,6 +163,44 @@ export default function App() {
     setDungeon(newDungeon);
     startEngine(newDungeon);
   }, [floorLevel, startEngine]);
+
+  const handleCloseTerminal = useCallback(() => {
+    setShowTerminalModal(false);
+    setActiveTerminal(null);
+    if (engineRef.current) {
+      engineRef.current.resume();
+    }
+  }, []);
+
+  const handleTerminalSuccess = useCallback(
+    (bonusRads: number) => {
+      if (engineRef.current && activeTerminal) {
+        activeTerminal.hacked = true;
+        activeTerminal.hackProgress = 100;
+        engineRef.current.player.intelCollected += bonusRads;
+        engineRef.current.spawnRadDrops(activeTerminal.x, activeTerminal.y, 5);
+        engineRef.current.addFloatingNotice(
+          activeTerminal.x,
+          activeTerminal.y - 12,
+          `+${bonusRads} RADS EXTRA`,
+          '#22c55e'
+        );
+
+        if (activeTerminal.type === 'map_reveal' || bonusRads >= 30) {
+          for (const room of engineRef.current.dungeon.rooms.values()) {
+            room.hasBeenRevealed = true;
+          }
+          engineRef.current.addFloatingNotice(
+            activeTerminal.x,
+            activeTerminal.y - 24,
+            'MAPA COMPLETO REVELADO',
+            '#38bdf8'
+          );
+        }
+      }
+    },
+    [activeTerminal]
+  );
 
   const handleNextFloor = () => {
     const nextLevel = floorLevel + 1;
@@ -246,9 +292,52 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Automatically pause engine when any modal or overlay is active
+  useEffect(() => {
+    const isAnyModalActive =
+      showLeaderboard ||
+      showTerminalModal ||
+      showBlueprint ||
+      showInstructions ||
+      isFloorCleared ||
+      isGameOver;
+
+    if (engineRef.current) {
+      if (isAnyModalActive) {
+        engineRef.current.pause();
+      } else {
+        engineRef.current.resume();
+      }
+    }
+  }, [
+    showLeaderboard,
+    showTerminalModal,
+    showBlueprint,
+    showInstructions,
+    isFloorCleared,
+    isGameOver,
+  ]);
+
   // Global key listener for Blueprint (M or Tab) and Help (H)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // NEVER intercept keys if user is typing in an input field or textarea
+      const target = e.target as HTMLElement | null;
+      if (
+        (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) ||
+        (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA'))
+      ) {
+        return;
+      }
+
+      if (showLeaderboard || showTerminalModal) {
+        if (e.code === 'Escape') {
+          setShowLeaderboard(false);
+          setShowTerminalModal(false);
+        }
+        return;
+      }
+
       if (e.code === 'KeyM' || e.code === 'Tab') {
         e.preventDefault();
         setShowBlueprint((prev) => !prev);
@@ -261,7 +350,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [showLeaderboard, showTerminalModal]);
 
   const handleTogglePathGuide = () => {
     const next = !showPathGuide;
@@ -430,6 +519,14 @@ export default function App() {
         onClose={() => setShowLeaderboard(false)}
         onResumeGame={handleResumeGame}
         onSaveCurrentGame={handleSaveCurrentGame}
+      />
+
+      {/* Terminal Console Mini-game Modal */}
+      <TerminalMinigameModal
+        isOpen={showTerminalModal}
+        terminal={activeTerminal}
+        onClose={handleCloseTerminal}
+        onSuccess={handleTerminalSuccess}
       />
 
       {/* Instructions Modal */}

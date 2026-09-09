@@ -303,6 +303,60 @@ class SoundSystem {
     osc.stop(t + 0.35);
   }
 
+  public playExplosion() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    this.playNoise(0.4, 0.7 * this.volume, 300);
+  }
+
+  public playPlayerDamage() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    this.playNoise(0.15, 0.5 * this.volume, 500);
+  }
+
+  public playEmptyClick() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(300, t);
+    gain.gain.setValueAtTime(this.volume * 0.2, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.04);
+  }
+
+  public playBossDeath() {
+    if (!this.enabled) return;
+    this.playExplosion();
+    this.playDoorUnlock();
+  }
+
+  public playTone(frequency: number, duration: number = 0.15, type: OscillatorType = 'sine') {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(frequency, t);
+    gain.gain.setValueAtTime(this.volume * 0.35, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(t);
+    osc.stop(t + duration);
+  }
+
   private playNoise(duration: number, volume: number, cutoff: number) {
     if (!this.ctx) return;
     const bufferSize = this.ctx.sampleRate * duration;

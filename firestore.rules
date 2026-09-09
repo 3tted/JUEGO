@@ -27,7 +27,9 @@ service cloud.firestore {
     // User Profile Validation
     function isValidUserProfile(data) {
       return data.id is string && data.id == request.auth.uid &&
-             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 64 &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 64)) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 128)) &&
+             (!('faction' in data) || (data.faction is string && data.faction.size() <= 64)) &&
              (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
              data.highestFloor is number && data.highestFloor >= 1 && data.highestFloor <= 1000 &&
              data.totalRads is number && data.totalRads >= 0 &&
@@ -40,7 +42,7 @@ service cloud.firestore {
     function isValidLeaderboardEntry(data) {
       return data.id is string && isValidId(data.id) &&
              data.userId is string && data.userId == request.auth.uid &&
-             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 64 &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 64)) &&
              (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500)) &&
              data.floorLevel is number && data.floorLevel >= 1 &&
              data.radsCollected is number && data.radsCollected >= 0 &&
@@ -69,7 +71,7 @@ service cloud.firestore {
     // Collection: /users/{userId}
     match /users/{userId} {
       allow get: if isSignedIn() && isValidId(userId);
-      allow list: if false;
+      allow list: if isSignedIn();
 
       allow create: if isSignedIn() &&
                        isValidId(userId) &&
@@ -77,10 +79,8 @@ service cloud.firestore {
                        isValidUserProfile(incoming()) &&
                        incoming().createdAt == request.time &&
                        incoming().updatedAt == request.time &&
-                       (
-                         (incoming().keys().hasAll(['id', 'displayName', 'highestFloor', 'totalRads', 'runsPlayed', 'createdAt', 'updatedAt']) && incoming().keys().size() == 7) ||
-                         (incoming().keys().hasAll(['id', 'displayName', 'photoURL', 'highestFloor', 'totalRads', 'runsPlayed', 'createdAt', 'updatedAt']) && incoming().keys().size() == 8)
-                       );
+                       incoming().keys().hasAll(['id', 'highestFloor', 'totalRads', 'runsPlayed', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['id', 'displayName', 'email', 'faction', 'photoURL', 'highestFloor', 'totalRads', 'runsPlayed', 'createdAt', 'updatedAt']);
 
       allow update: if isSignedIn() &&
                        isValidId(userId) &&
@@ -89,7 +89,7 @@ service cloud.firestore {
                        incoming().id == existing().id &&
                        incoming().createdAt == existing().createdAt &&
                        incoming().updatedAt == request.time &&
-                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'highestFloor', 'totalRads', 'runsPlayed', 'updatedAt']);
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'faction', 'photoURL', 'highestFloor', 'totalRads', 'runsPlayed', 'updatedAt']);
 
       allow delete: if false;
     }
@@ -104,10 +104,8 @@ service cloud.firestore {
                        incoming().id == runId &&
                        isValidLeaderboardEntry(incoming()) &&
                        incoming().createdAt == request.time &&
-                       (
-                         (incoming().keys().hasAll(['id', 'userId', 'displayName', 'floorLevel', 'radsCollected', 'outcome', 'createdAt']) && incoming().keys().size() == 7) ||
-                         (incoming().keys().hasAll(['id', 'userId', 'displayName', 'photoURL', 'floorLevel', 'radsCollected', 'outcome', 'createdAt']) && incoming().keys().size() == 8)
-                       );
+                       incoming().keys().hasAll(['id', 'userId', 'floorLevel', 'radsCollected', 'outcome', 'createdAt']) &&
+                       incoming().keys().hasOnly(['id', 'userId', 'displayName', 'photoURL', 'floorLevel', 'radsCollected', 'outcome', 'createdAt']);
 
       allow update, delete: if false;
     }

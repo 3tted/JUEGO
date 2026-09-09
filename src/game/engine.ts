@@ -21,6 +21,7 @@ import {
   drawBandit,
   drawBarrelCactus,
   drawBoneCarcass,
+  drawConsoleTerminal,
   drawExplosivesChest,
   drawNuclearCrosshair,
   drawNuclearThroneDoor,
@@ -65,6 +66,7 @@ export interface GameEngineCallbacks {
   onAlarmChange?: (level: number) => void;
   onIntelFound?: (count: number) => void;
   onRoomEntered?: (room: RoomInstance) => void;
+  onTerminalOpen?: (terminal: TerminalEntity) => void;
 }
 
 export class GameEngine {
@@ -102,6 +104,10 @@ export class GameEngine {
   public isMouseDown: boolean = false;
   public isRightMouseDown: boolean = false;
 
+  // Cadencia de fuego (Fire Rate) en segundos para disparo automático con flechitas
+  public fireRate: number = 0.20;
+  private shootCooldownTimer: number = 0;
+
   // Katana Slash Arc
   public slashCooldown: number = 0;
 
@@ -129,8 +135,23 @@ export class GameEngine {
   // Running loop
   private animFrameId: number | null = null;
   private lastTime: number = 0;
+  public gameTime: number = 0;
+  public isPaused: boolean = false;
   private callbacks: GameEngineCallbacks;
   public isTransitioning: boolean = false;
+
+  public pause() {
+    this.isPaused = true;
+    this.keys = {};
+    this.isMouseDown = false;
+  }
+
+  public resume() {
+    this.isPaused = false;
+    this.keys = {};
+    this.isMouseDown = false;
+    this.lastTime = performance.now();
+  }
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -260,9 +281,6 @@ export class GameEngine {
   private initEvents() {
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
-    this.canvas.addEventListener('mousemove', this.handleMouseMove);
-    this.canvas.addEventListener('mousedown', this.handleMouseDown);
-    window.addEventListener('mouseup', this.handleMouseUp);
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
@@ -270,12 +288,23 @@ export class GameEngine {
     if (this.animFrameId) cancelAnimationFrame(this.animFrameId);
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
-    this.canvas.removeEventListener('mousemove', this.handleMouseMove);
-    this.canvas.removeEventListener('mousedown', this.handleMouseDown);
-    window.removeEventListener('mouseup', this.handleMouseUp);
   }
 
   private handleKeyDown = (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (
+      (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) ||
+      (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA'))
+    ) {
+      return;
+    }
+    if (this.isPaused) return;
+
+    // Evitar que las flechas direccionales o barra espaciadora hagan scroll en la página
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+      e.preventDefault();
+    }
+
     this.keys[e.code] = true;
 
     if (e.code === 'KeyR' && !this.player.isReloading && this.player.magAmmo < this.player.magCapacity && this.player.ammo > 0) {
@@ -299,31 +328,18 @@ export class GameEngine {
   };
 
   private handleKeyUp = (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (
+      (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) ||
+      (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA'))
+    ) {
+      return;
+    }
+    if (this.isPaused) {
+      this.keys[e.code] = false;
+      return;
+    }
     this.keys[e.code] = false;
-  };
-
-  private handleMouseMove = (e: MouseEvent) => {
-    const rect = this.canvas.getBoundingClientRect();
-    this.mousePos = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
-  };
-
-  private handleMouseDown = (e: MouseEvent) => {
-    if (e.button === 0) {
-      this.isMouseDown = true;
-      this.swingKatanaOrShoot();
-    } else if (e.button === 2) {
-      e.preventDefault();
-      this.fireExplosive();
-    }
-  };
-
-  private handleMouseUp = (e: MouseEvent) => {
-    if (e.button === 0) {
-      this.isMouseDown = false;
-    }
   };
 
   public triggerDash() {
@@ -426,6 +442,82 @@ export class GameEngine {
     }
   }
 
+  /**
+   * Instancia y dispara un proyectil en la dirección especificada por las flechitas.
+   * Totalmente independiente del movimiento de WASD y sin lectura de ratón.
+   */
+  public fireProjectileInDirection(dirX: number, dirY: number) {
+    const len = Math.hypot(dirX, dirY);
+    if (len === 0) return;
+    const normX = dirX / len;
+    const normY = dirY / len;
+    const angle = Math.atan2(normY, normX);
+
+    this.player.angle = angle;
+    this.screenShake = Math.max(this.screenShake, 3);
+    sound.playSuppressedShot();
+
+    const speed = 720;
+    const spread = (Math.random() - 0.5) * 0.04;
+    const finalAngle = angle + spread;
+
+    const bx = this.player.x + Math.cos(finalAngle) * 16;
+    const by = this.player.y + Math.sin(finalAngle) * 16;
+
+    // Desvío / parada de proyectiles enemigos cercanos al disparar
+    const sliceRange = 36;
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i];
+      if (!p.fromPlayer) {
+        const dX = p.x - this.player.x;
+        const dY = p.y - this.player.y;
+        if (Math.hypot(dX, dY) < sliceRange + 8) {
+          p.fromPlayer = true;
+          p.vx = Math.cos(finalAngle) * 550;
+          p.vy = Math.sin(finalAngle) * 550;
+          this.createSparks(p.x, p.y, '#ffffff');
+        }
+      }
+    }
+
+    // Gestión de munición y recarga automática
+    if (this.player.magAmmo > 0) {
+      this.player.magAmmo--;
+      if (this.player.magAmmo === 0 && !this.player.isReloading && this.player.ammo > 0) {
+        this.startReload();
+      }
+    } else if (!this.player.isReloading && this.player.ammo > 0) {
+      this.startReload();
+    }
+
+    // Instanciar proyectil
+    this.projectiles.push({
+      id: Math.random().toString(),
+      x: bx,
+      y: by,
+      vx: Math.cos(finalAngle) * speed,
+      vy: Math.sin(finalAngle) * speed,
+      fromPlayer: true,
+      damage: 3.5,
+      distanceTravelled: 0,
+      maxDistance: 650,
+    });
+
+    // Casquillo expulsado
+    const cAngle = angle - Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+    this.casings.push({
+      x: this.player.x,
+      y: this.player.y,
+      vx: Math.cos(cAngle) * 80,
+      vy: Math.sin(cAngle) * 80,
+      rotation: Math.random() * Math.PI * 2,
+      rotationSpeed: (Math.random() - 0.5) * 15,
+    });
+
+    // Chispas del cañón
+    this.createSparks(bx, by, '#ffdd44');
+  }
+
   private shootBullet() {
     this.player.magAmmo--;
     const speed = 700;
@@ -520,7 +612,8 @@ export class GameEngine {
   }
 
   private update(dt: number) {
-    if (this.isTransitioning) return;
+    if (this.isTransitioning || this.isPaused) return;
+    this.gameTime += dt;
 
     // Decay screen shake
     if (this.screenShake > 0) {
@@ -539,30 +632,49 @@ export class GameEngine {
       this.slashCooldown -= dt;
     }
 
-    // Convert mouse to world coordinates via camera and zoom
-    const viewW = this.canvas.width;
-    const viewH = this.canvas.height;
-    this.mouseWorldPos = {
-      x: (this.mousePos.x - viewW / 2) / this.zoom + this.cameraX,
-      y: (this.mousePos.y - viewH / 2) / this.zoom + this.cameraY,
-    };
+    // 1. DISPARO CON FLECHITAS (Exclusivo con ArrowUp, ArrowDown, ArrowLeft, ArrowRight)
+    let shootX = 0;
+    let shootY = 0;
+    if (this.keys['ArrowUp']) shootY -= 1;
+    if (this.keys['ArrowDown']) shootY += 1;
+    if (this.keys['ArrowLeft']) shootX -= 1;
+    if (this.keys['ArrowRight']) shootX += 1;
 
-    this.player.angle = Math.atan2(
-      this.mouseWorldPos.y - this.player.y,
-      this.mouseWorldPos.x - this.player.x
-    );
+    const isShootingWithArrows = shootX !== 0 || shootY !== 0;
 
-    // Player Movement
+    if (this.shootCooldownTimer > 0) {
+      this.shootCooldownTimer -= dt;
+    }
+
+    if (isShootingWithArrows) {
+      // Apunta en la dirección indicada por las flechitas (8 direcciones)
+      this.player.angle = Math.atan2(shootY, shootX);
+
+      // Disparo automático continuo respetando la cadencia de fuego (Fire Rate)
+      if (this.shootCooldownTimer <= 0) {
+        this.fireProjectileInDirection(shootX, shootY);
+        this.shootCooldownTimer = this.fireRate;
+      }
+    }
+
+    // 2. MOVIMIENTO ESTRICTAMENTE CON WASD (8 DIRECCIONES CON NORMALIZACIÓN DE VECTOR)
     let moveX = 0;
     let moveY = 0;
-    if (this.keys['KeyW'] || this.keys['ArrowUp']) moveY -= 1;
-    if (this.keys['KeyS'] || this.keys['ArrowDown']) moveY += 1;
-    if (this.keys['KeyA'] || this.keys['ArrowLeft']) moveX -= 1;
-    if (this.keys['KeyD'] || this.keys['ArrowRight']) moveX += 1;
+    if (this.keys['KeyW']) moveY -= 1;
+    if (this.keys['KeyS']) moveY += 1;
+    if (this.keys['KeyA']) moveX -= 1;
+    if (this.keys['KeyD']) moveX += 1;
 
-    if (moveX !== 0 && moveY !== 0) {
-      moveX *= 0.7071;
-      moveY *= 0.7071;
+    // Normalizar vector para evitar mayor velocidad en las diagonales (1.414 -> 1.0)
+    const moveLen = Math.hypot(moveX, moveY);
+    if (moveLen > 0) {
+      moveX /= moveLen;
+      moveY /= moveLen;
+    }
+
+    // Si no está disparando con flechitas, el personaje se orienta hacia la dirección que camina
+    if (!isShootingWithArrows && (moveX !== 0 || moveY !== 0)) {
+      this.player.angle = Math.atan2(moveY, moveX);
     }
 
     const isMoving = moveX !== 0 || moveY !== 0;
@@ -647,14 +759,15 @@ export class GameEngine {
       const dY = this.player.y - rad.y;
       const dist = Math.hypot(dX, dY);
 
-      // Magnet towards player if close
-      if (dist < 80) {
-        const pull = (80 - dist) * 7.0;
+      // Magnet towards player if close (generous radius for smooth pickup)
+      if (dist < 150) {
+        const pull = (150 - dist) * 8.5;
         rad.vx += (dX / dist) * pull * dt;
         rad.vy += (dY / dist) * pull * dt;
       }
 
-      if (dist < 14) {
+      // Collect distance (increased hitbox from 14px to 34px)
+      if (dist < 34) {
         this.player.intelCollected += rad.value;
         sound.playPickup();
         this.radDrops.splice(i, 1);
@@ -783,8 +896,8 @@ export class GameEngine {
       const item = currentRoom.items[i];
       const dist = Math.hypot(this.player.x - item.x, this.player.y - item.y);
 
-      // Distance to show informative explanation banner (< 55px)
-      if (dist < 55) {
+      // Distance to show informative explanation banner (< 75px)
+      if (dist < 75) {
         if (item.type === 'ammo') {
           if (this.player.ammo >= this.player.maxAmmo) {
             currentLegend = `NO PUEDES RECOGER MUNICIÓN: Capacidad máxima alcanzada (${this.player.ammo}/${this.player.maxAmmo} balas). Dispara para liberar espacio.`;
@@ -808,8 +921,8 @@ export class GameEngine {
         }
       }
 
-      // Touch / Collect distance (< 24px)
-      if (dist < 24) {
+      // Touch / Collect distance (< 48px - enlarged hitbox for smooth pickup)
+      if (dist < 48) {
         if (item.type === 'ammo') {
           if (this.player.ammo < this.player.maxAmmo) {
             sound.playPickup();
@@ -847,25 +960,30 @@ export class GameEngine {
       }
     }
 
-    // Terminals / Consoles
+    // Terminals / Consoles (Enlarged interaction distance < 58px)
     for (const term of currentRoom.terminals) {
       const tDist = Math.hypot(this.player.x - term.x, this.player.y - term.y);
-      if (tDist < 45) {
+      if (tDist < 75) {
         if (term.hacked) {
-          if (!currentLegend) currentLegend = 'TERMINAL YA HACKEADA: Datos de inteligencia ya extraídos.';
+          if (!currentLegend) currentLegend = 'CONSOLA YA HACKEADA: Protocolos de seguridad anulados.';
         } else {
-          if (!currentLegend) currentLegend = `TERMINAL DE SEGURIDAD: Mantén [E] para piratear (${Math.round(term.hackProgress)}%)`;
+          if (!currentLegend) currentLegend = `CONSOLA TÁCTICA: Presiona [E] para interactuar y hackear el circuito.`;
         }
       }
 
-      if (tDist < 30 && !term.hacked) {
+      if (tDist < 58 && !term.hacked) {
         if (this.keys['KeyE']) {
-          term.hackProgress += dt * 60;
+          this.keys['KeyE'] = false;
           sound.playHackBeep();
-          if (term.hackProgress >= 100) {
-            term.hacked = true;
-            this.spawnRadDrops(term.x, term.y, 4);
-            this.addFloatingNotice(term.x, term.y - 10, 'HACKEO COMPLETADO', '#48bb78');
+          if (this.callbacks.onTerminalOpen) {
+            this.callbacks.onTerminalOpen(term);
+          } else {
+            term.hackProgress += dt * 60;
+            if (term.hackProgress >= 100) {
+              term.hacked = true;
+              this.spawnRadDrops(term.x, term.y, 4);
+              this.addFloatingNotice(term.x, term.y - 10, 'HACKEO COMPLETADO', '#48bb78');
+            }
           }
         }
       }
@@ -1176,8 +1294,12 @@ export class GameEngine {
 
     ctx.restore();
 
-    // 9. Draw Nuclear Throne Crosshair at mouse cursor
-    drawNuclearCrosshair(ctx, this.mousePos.x, this.mousePos.y);
+    // 9. Retícula táctica direccional frente al personaje (basada en orientación de teclado, sin ratón)
+    const aimWorldX = this.player.x + Math.cos(this.player.angle) * 42;
+    const aimWorldY = this.player.y + Math.sin(this.player.angle) * 42;
+    const screenAimX = (aimWorldX - this.cameraX) * this.zoom + this.canvas.width / 2;
+    const screenAimY = (aimWorldY - this.cameraY) * this.zoom + this.canvas.height / 2;
+    drawNuclearCrosshair(ctx, screenAimX, screenAimY);
   }
 
   private renderNuclearThroneRoom(room: RoomInstance) {
@@ -1269,6 +1391,22 @@ export class GameEngine {
 
     // Draw Items
     for (const item of room.items) {
+      // Glowing pickup zone ring indicating the enlarged hitbox
+      const auraPulse = Math.sin(this.gameTime * 4 + item.x) * 0.12 + 0.22;
+      ctx.save();
+      ctx.fillStyle =
+        item.type === 'ammo'
+          ? `rgba(234, 179, 8, ${auraPulse})`
+          : item.type === 'explosives'
+          ? `rgba(249, 115, 22, ${auraPulse})`
+          : item.type === 'medkit'
+          ? `rgba(34, 197, 94, ${auraPulse})`
+          : `rgba(56, 189, 248, ${auraPulse})`;
+      ctx.beginPath();
+      ctx.ellipse(Math.floor(item.x), Math.floor(item.y + 6), 16, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
       if (item.type === 'ammo' || item.type === 'explosives') {
         drawExplosivesChest(ctx, item.x, item.y);
       } else if (item.type === 'intel') {
@@ -1279,7 +1417,7 @@ export class GameEngine {
 
       // Visual indicator if item cannot be collected due to full inventory
       const dToPlayer = Math.hypot(this.player.x - item.x, this.player.y - item.y);
-      if (dToPlayer < 65) {
+      if (dToPlayer < 75) {
         let badgeText: string | null = null;
         if (item.type === 'ammo' && this.player.ammo >= this.player.maxAmmo) {
           badgeText = '[MUNICIÓN LLENA]';
@@ -1301,6 +1439,13 @@ export class GameEngine {
           ctx.restore();
         }
       }
+    }
+
+    // Draw Computer Consoles / Terminals
+    for (const term of room.terminals) {
+      const dToPlayer = Math.hypot(this.player.x - term.x, this.player.y - term.y);
+      const isNearby = dToPlayer < 65;
+      drawConsoleTerminal(ctx, term.x, term.y, term.hacked, this.gameTime, isNearby, term.minigameType);
     }
 
     // Draw Guards (Bandits, Scorpions)
