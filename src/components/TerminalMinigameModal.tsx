@@ -16,7 +16,6 @@ import {
   Activity,
   Sliders,
   Layers,
-  Shuffle,
   Volume2,
 } from 'lucide-react';
 import { TerminalEntity, TerminalMinigameType } from '../types';
@@ -1216,8 +1215,6 @@ export const TerminalMinigameModal: React.FC<TerminalMinigameModalProps> = ({
   const [isHacked, setIsHacked] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'game' | 'logs'>('game');
   const [logMessages, setLogMessages] = useState<string[]>([]);
-  const [isQuickBypassing, setIsQuickBypassing] = useState<boolean>(false);
-  const [quickBypassProgress, setQuickBypassProgress] = useState<number>(0);
 
   const hasClaimedRef = useRef<boolean>(false);
   const pendingRewardRef = useRef<number>(35);
@@ -1317,8 +1314,6 @@ export const TerminalMinigameModal: React.FC<TerminalMinigameModalProps> = ({
       const chosen = terminal?.minigameType || allTypes[Math.floor(Math.random() * allTypes.length)];
       setActiveMinigame(chosen);
       setIsHacked(terminal?.hacked || false);
-      setIsQuickBypassing(false);
-      setQuickBypassProgress(0);
       setActiveTab('game');
       setLogMessages([
         '> INICIANDO ENLACE DE CONSOLA TÁCTICA SEC-OS v4.2...',
@@ -1332,25 +1327,6 @@ export const TerminalMinigameModal: React.FC<TerminalMinigameModalProps> = ({
       }
     }
   }, [isOpen, terminal]);
-
-  // Quick Bypass action
-  const handleQuickBypass = () => {
-    if (isQuickBypassing || isHacked) return;
-    setIsQuickBypassing(true);
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 25;
-      setQuickBypassProgress(progress);
-      sound.playHackBeep();
-      if (progress >= 100) {
-        clearInterval(interval);
-        setIsQuickBypassing(false);
-        sound.playPickup();
-        addLog('⚡ BYPASS FORZADO EXITOSO: Protocolos eludidos de emergencia (+15 RADS).');
-        handleMinigameVictory(15);
-      }
-    }, 200);
-  };
 
   if (!isOpen) return null;
 
@@ -1430,28 +1406,6 @@ export const TerminalMinigameModal: React.FC<TerminalMinigameModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Protocol Switcher / Randomizer Button */}
-            <button
-              onClick={() => {
-                const types: TerminalMinigameType[] = [
-                  'circuit_maze',
-                  'frequency_lock',
-                  'memory_cipher',
-                  'wire_bypass',
-                ];
-                const currentIndex = types.indexOf(activeMinigame);
-                const nextType = types[(currentIndex + 1) % types.length];
-                setActiveMinigame(nextType);
-                setIsHacked(false);
-                addLog(`> CAMBIO DE PROTOCOLO // Conectando a [${nextType.toUpperCase()}]...`);
-              }}
-              className="flex items-center gap-1 text-[8px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded border border-slate-600 cursor-pointer"
-              title="Alternar a otro minijuego aleatorio"
-            >
-              <Shuffle className="w-3 h-3 text-cyan-400" />
-              OTRO MINIJUEGO
-            </button>
-
             <button
               id="close-terminal-btn"
               onClick={handleSafeClose}
@@ -1524,27 +1478,6 @@ export const TerminalMinigameModal: React.FC<TerminalMinigameModalProps> = ({
                   onVictory={() => handleMinigameVictory(35)}
                   addLog={addLog}
                 />
-              )}
-
-              {/* Quick Bypass Button */}
-              {!isHacked && (
-                <div className="mt-3 w-full max-w-sm flex items-center justify-between bg-[#07140e] border border-emerald-900/60 p-2 rounded">
-                  <div className="flex flex-col">
-                    <span className="text-[8px] text-emerald-400 font-bold">
-                      ¿EN APUROS? BYPASS FORZADO
-                    </span>
-                    <span className="text-[7px] text-emerald-600">
-                      Otorga +15 Rads rápidos sin resolver el puzzle.
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleQuickBypass}
-                    disabled={isQuickBypassing}
-                    className="px-3 py-1.5 bg-emerald-950 hover:bg-emerald-900 border border-emerald-500 text-emerald-300 text-[8px] rounded font-bold transition-all cursor-pointer"
-                  >
-                    {isQuickBypassing ? `DECODIFICANDO ${quickBypassProgress}%` : 'BYPASS RÁPIDO'}
-                  </button>
-                </div>
               )}
 
               {/* Victory Banner with Automatic Exit */}

@@ -1,5 +1,7 @@
 export type Direction = 'N' | 'S' | 'E' | 'W';
 
+export type WeaponType = 'pistol' | 'shotgun' | 'laser' | 'plasma';
+
 export interface Point {
   x: number;
   y: number;
@@ -103,9 +105,10 @@ export interface ItemDrop {
   id: string;
   x: number;
   y: number;
-  type: 'ammo' | 'medkit' | 'emp_charge' | 'smoke_grenade' | 'intel' | 'keycard' | 'rad' | 'explosives';
+  type: 'ammo' | 'medkit' | 'emp_charge' | 'smoke_grenade' | 'intel' | 'keycard' | 'rad' | 'explosives' | 'weapon';
   amount: number;
   name: string;
+  weaponType?: WeaponType;
 }
 
 export interface BossEntity {
@@ -210,6 +213,7 @@ export interface PlayerState {
   swingProgress: number;
   explosivesAmmo: number;
   activeWeaponSlot: number;
+  currentWeapon: WeaponType;
 }
 
 export interface Projectile {
@@ -223,6 +227,9 @@ export interface Projectile {
   isEmp?: boolean;
   distanceTravelled: number;
   maxDistance: number;
+  weaponType?: WeaponType;
+  color?: string;
+  glowColor?: string;
 }
 
 export interface Particle {

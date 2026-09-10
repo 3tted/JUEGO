@@ -8,6 +8,8 @@
 // - Explosives Chest & Rad Canister
 // - 4-Bracket Crosshair
 
+import { WeaponType } from '../types';
+
 export function drawPixelRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -23,7 +25,7 @@ export function drawPixelRect(
   ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
 }
 
-// 1. AGENTE 007 PROTAGONIST (Classic Black Tuxedo, Bowtie, Walther PPK Silencer & Katana)
+// 1. AGENTE 007 PROTAGONIST (Classic Black Tuxedo, Bowtie, Walther PPK Silencer, Shotgun, Laser, Plasma & Katana)
 export function drawAgent007Player(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -32,7 +34,8 @@ export function drawAgent007Player(
   walkCycle: number,
   isMoving: boolean,
   isSwinging: boolean,
-  swingProgress: number
+  swingProgress: number,
+  weaponType: WeaponType = 'pistol'
 ) {
   ctx.save();
   ctx.translate(Math.floor(x), Math.floor(y));
@@ -142,34 +145,172 @@ export function drawAgent007Player(
     ctx.fillRect(-2, 1, 4, 6);
     ctx.restore();
   } else {
-    // Classic 007 Walther PPK with Suppressor / Silencer
+    // Weapon rendering based on currently equipped weaponType
     ctx.save();
     ctx.rotate(angle);
     ctx.translate(6, 1);
 
-    // Tuxedo arm extending with pistol
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(-2, -2, 7, 5);
-    ctx.fillStyle = '#141418';
-    ctx.fillRect(-1, -1, 5, 3);
+    if (weaponType === 'shotgun') {
+      // 1. COMBAT SHOTGUN (Spas-12 heavy double-handed pump shotgun)
+      // Rear Tuxedo arm & shoulder stock
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(-5, -2, 6, 5);
+      ctx.fillStyle = '#141418';
+      ctx.fillRect(-4, -1, 5, 3);
 
-    // Hand (skin)
-    ctx.fillStyle = '#fed7aa';
-    ctx.fillRect(4, -1, 3, 3);
+      // Wooden/Composite Tactical Stock
+      ctx.fillStyle = '#78350f';
+      ctx.fillRect(-3, -2, 4, 3);
+      ctx.fillStyle = '#451a03';
+      ctx.fillRect(-4, -1, 2, 2);
 
-    // Walther PPK Body (Gunmetal / Dark Slate)
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(6, -2, 6, 4);
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(7, -1, 4, 2);
+      // Main Shotgun Receiver (Heavy Gunmetal)
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(1, -3, 9, 6);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(2, -2, 7, 4);
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(4, -1, 3, 2); // ejection port
 
-    // Silencer / Suppressor (Long black barrel cylinder)
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(11, -2, 8, 3);
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(12, -1, 6, 1);
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(17, -1, 1, 1); // silencer tip
+      // Trigger Hand (Skin)
+      ctx.fillStyle = '#fed7aa';
+      ctx.fillRect(1, 0, 3, 3);
+
+      // Heavy Ribbed Barrel & Heat Shield (Longer & wider than pistol)
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(9, -3, 12, 5);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(10, -2, 10, 3);
+      // Heat vent perforations
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(11, -2, 2, 1);
+      ctx.fillRect(14, -2, 2, 1);
+      ctx.fillRect(17, -2, 2, 1);
+
+      // Underbarrel Magazine Tube & Orange/Brown Pump Grip
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(8, 1, 9, 3);
+      ctx.fillStyle = '#b45309';
+      ctx.fillRect(9, 2, 7, 2);
+
+      // Support Hand gripping pump (Skin & sleeve)
+      ctx.fillStyle = '#fed7aa';
+      ctx.fillRect(11, 1, 3, 3);
+      ctx.fillStyle = '#141418';
+      ctx.fillRect(9, 2, 3, 2);
+
+      // Twin Muzzle Tips with heat tint
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(20, -3, 2, 4);
+      ctx.fillStyle = '#ea580c';
+      ctx.fillRect(21, -2, 1, 2); // glowing hot muzzle ring
+    } else if (weaponType === 'laser') {
+      // 2. PHOTONIC LASER CARBINE (Sleek futuristic cybernetic rail with glowing cyan core)
+      // Tuxedo Arm
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(-2, -2, 7, 5);
+      ctx.fillStyle = '#141418';
+      ctx.fillRect(-1, -1, 5, 3);
+
+      // Primary Hand
+      ctx.fillStyle = '#fed7aa';
+      ctx.fillRect(3, -1, 3, 3);
+
+      // Sleek High-Tech Frame (Deep Navy / Carbon)
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(5, -3, 16, 6);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(6, -2, 14, 4);
+
+      // Top Optical Collimator Scope
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(7, -4, 6, 2);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(11, -4, 2, 1); // scope lens
+
+      // Animated Glowing Cyan Energy Capacitor / Plasma Rail
+      ctx.fillStyle = '#0369a1';
+      ctx.fillRect(7, -1, 8, 2);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(8, -1, 6, 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(10, 0, 3, 1); // bright core
+
+      // Laser Twin Rails & Focal Projector Tip
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(15, -2, 5, 1);
+      ctx.fillRect(15, 1, 5, 1);
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(19, -2, 3, 3);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(21, -1, 2, 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(22, 0, 1, 1); // glowing laser emitter diode
+    } else if (weaponType === 'plasma') {
+      // 3. HEAVY PLASMA CANNON (Bulky toxic green energy cannon with visible reactor)
+      // Tuxedo Arm & Support
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(-3, -2, 8, 6);
+      ctx.fillStyle = '#141418';
+      ctx.fillRect(-2, -1, 6, 4);
+
+      // Primary Hand
+      ctx.fillStyle = '#fed7aa';
+      ctx.fillRect(3, -1, 3, 3);
+
+      // Bulky Heavy Body (Dark Military Green / Iron)
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(4, -4, 14, 8);
+      ctx.fillStyle = '#064e3b';
+      ctx.fillRect(5, -3, 12, 6);
+
+      // Top Copper Heat-sink Cooling Fins
+      ctx.fillStyle = '#b45309';
+      ctx.fillRect(6, -5, 2, 2);
+      ctx.fillRect(9, -5, 2, 2);
+      ctx.fillRect(12, -5, 2, 2);
+
+      // Glowing Emerald Plasma Containment Chamber
+      ctx.fillStyle = '#047857';
+      ctx.fillRect(7, -2, 6, 4);
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(8, -1, 4, 3);
+      ctx.fillStyle = '#86efac';
+      ctx.fillRect(9, 0, 2, 1); // hot inner core
+
+      // Wide Flared Plasma Funnel Nozzle
+      ctx.fillStyle = '#022c22';
+      ctx.fillRect(15, -4, 4, 7);
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(17, -3, 2, 5);
+      ctx.fillStyle = '#4ade80';
+      ctx.fillRect(18, -2, 1, 3); // plasma charge ring
+    } else {
+      // 4. CLASSIC 007 WALTHER PPK WITH SUPPRESSOR / SILENCER
+      // Tuxedo arm extending with pistol
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(-2, -2, 7, 5);
+      ctx.fillStyle = '#141418';
+      ctx.fillRect(-1, -1, 5, 3);
+
+      // Hand (skin)
+      ctx.fillStyle = '#fed7aa';
+      ctx.fillRect(4, -1, 3, 3);
+
+      // Walther PPK Body (Gunmetal / Dark Slate)
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(6, -2, 6, 4);
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(7, -1, 4, 2);
+
+      // Silencer / Suppressor (Long black barrel cylinder)
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(11, -2, 8, 3);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(12, -1, 6, 1);
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(17, -1, 1, 1); // silencer tip
+    }
 
     ctx.restore();
   }
@@ -882,6 +1023,277 @@ export function drawConsoleTerminal(
     ctx.fillStyle = badgeColor;
     ctx.fillText(badgeText, 0, by);
     ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// 12. ADVANCED WEAPON PICKUP PEDESTAL & FLOATING SPRITE
+export function drawWeaponPickup(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  weaponType: WeaponType,
+  gameTime: number = 0,
+  isNearby: boolean = false
+) {
+  ctx.save();
+  ctx.translate(Math.floor(x), Math.floor(y));
+
+  const bob = Math.sin(gameTime * 3.5 + x * 0.1) * 3;
+  const pulse = Math.sin(gameTime * 5 + y * 0.1) * 0.5 + 0.5;
+
+  let auraColor = 'rgba(234, 179, 8, 0.35)';
+  let badgeColor = '#eab308';
+  let badgeText = 'WALTHER PPK';
+
+  if (weaponType === 'shotgun') {
+    auraColor = 'rgba(249, 115, 22, 0.4)';
+    badgeColor = '#f97316';
+    badgeText = 'ESCOPETA TÁCTICA';
+  } else if (weaponType === 'laser') {
+    auraColor = 'rgba(56, 189, 248, 0.45)';
+    badgeColor = '#38bdf8';
+    badgeText = 'FUSIL LÁSER';
+  } else if (weaponType === 'plasma') {
+    auraColor = 'rgba(34, 197, 94, 0.45)';
+    badgeColor = '#22c55e';
+    badgeText = 'CAÑÓN DE PLASMA';
+  }
+
+  // Ground shadow & neon emitter ring
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.beginPath();
+  ctx.ellipse(0, 6, 16, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = auraColor;
+  ctx.beginPath();
+  ctx.ellipse(0, 6, 18 + pulse * 4, 8 + pulse * 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Floating Weapon Sprite
+  ctx.save();
+  ctx.translate(0, -6 + bob);
+
+  if (weaponType === 'shotgun') {
+    // SPAS-12 COMBAT SHOTGUN SPRITE
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.fillRect(-13, -2, 28, 6);
+
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(-12, -4, 6, 6);
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(-11, -3, 4, 4);
+
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(-6, -5, 10, 8);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(-5, -4, 8, 6);
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(-2, -3, 4, 2);
+
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(4, 0, 8, 4);
+    ctx.fillStyle = '#b45309';
+    ctx.fillRect(5, 1, 6, 2);
+
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(4, -5, 13, 5);
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(5, -4, 11, 3);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(6, -4, 2, 1);
+    ctx.fillRect(10, -4, 2, 1);
+
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(17, -5, 2, 5);
+    ctx.fillStyle = '#ea580c';
+    ctx.fillRect(18, -4, 1, 3);
+  } else if (weaponType === 'laser') {
+    // PHOTONIC LASER CARBINE SPRITE
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(-10, -5, 24, 8);
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-9, -4, 22, 6);
+
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(-6, -7, 8, 3);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(-1, -7, 3, 2);
+
+    ctx.fillStyle = '#0369a1';
+    ctx.fillRect(-5, -3, 10, 4);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(-4, -2, 8, 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-2, -2, 4, 1);
+
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(5, -4, 9, 2);
+    ctx.fillRect(5, 0, 9, 2);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(13, -3, 3, 4);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(14, -2, 2, 2);
+  } else if (weaponType === 'plasma') {
+    // HEAVY PLASMA CANNON SPRITE
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(-11, -6, 24, 11);
+    ctx.fillStyle = '#064e3b';
+    ctx.fillRect(-10, -5, 22, 9);
+
+    ctx.fillStyle = '#b45309';
+    ctx.fillRect(-7, -8, 3, 3);
+    ctx.fillRect(-2, -8, 3, 3);
+    ctx.fillRect(3, -8, 3, 3);
+
+    ctx.fillStyle = '#047857';
+    ctx.fillRect(-6, -3, 11, 6);
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(-5, -2, 9, 4);
+    ctx.fillStyle = '#86efac';
+    ctx.fillRect(-3, -1, 5, 2);
+
+    ctx.fillStyle = '#022c22';
+    ctx.fillRect(9, -6, 5, 11);
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(11, -5, 3, 9);
+    ctx.fillStyle = '#4ade80';
+    ctx.fillRect(13, -3, 2, 5);
+  } else {
+    // CLASSIC WALTHER PPK SILENCED
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(-7, -4, 19, 7);
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(-6, -3, 8, 5);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(2, -3, 9, 4);
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(10, -2, 2, 2);
+  }
+
+  ctx.restore();
+
+  // Floating Tag Banner
+  const tagY = -22 + bob;
+  ctx.font = 'bold 7px monospace';
+  ctx.textAlign = 'center';
+  const displayTitle = isNearby ? `[PISAR] ${badgeText}` : badgeText;
+  const tw = ctx.measureText(displayTitle).width;
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+  ctx.fillRect(-Math.ceil(tw / 2) - 4, tagY - 7, Math.ceil(tw) + 8, 10);
+  ctx.strokeStyle = badgeColor;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(-Math.ceil(tw / 2) - 4, tagY - 7, Math.ceil(tw) + 8, 10);
+
+  ctx.fillStyle = isNearby ? '#ffffff' : badgeColor;
+  ctx.fillText(displayTitle, 0, tagY);
+
+  ctx.restore();
+}
+
+// 13. CUSTOM HIGH-FIDELITY PROJECTILE RENDERING
+export function drawCustomProjectile(
+  ctx: CanvasRenderingContext2D,
+  p: {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    fromPlayer: boolean;
+    weaponType?: WeaponType;
+  },
+  gameTime: number = 0
+) {
+  ctx.save();
+  ctx.translate(Math.floor(p.x), Math.floor(p.y));
+
+  if (!p.fromPlayer) {
+    // Enemy bullet: sinister red energy slug
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(-2, -2, 5, 5);
+    ctx.fillStyle = '#ff2020';
+    ctx.fillRect(-1, -1, 3, 3);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 1, 1);
+    ctx.restore();
+    return;
+  }
+
+  const wType = p.weaponType || 'pistol';
+  const angle = Math.atan2(p.vy, p.vx);
+
+  if (wType === 'shotgun') {
+    // Dense fiery buckshot pellet with glowing combustion trail
+    ctx.rotate(angle);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(-3, -2, 6, 4);
+    ctx.fillStyle = '#f97316';
+    ctx.fillRect(-2, -1.5, 4, 3);
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(-0.5, -0.5, 2, 1);
+
+    // Trailing combustion embers
+    ctx.fillStyle = 'rgba(234, 88, 12, 0.6)';
+    ctx.fillRect(-5, -1, 2, 2);
+  } else if (wType === 'laser') {
+    // Elongated Continuous Laser Beam segment (18px long)
+    ctx.rotate(angle);
+
+    // Outer neon glow
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+    ctx.fillRect(-10, -3, 20, 6);
+
+    // Main cyan laser beam line
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(-9, -2, 18, 4);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillRect(-8, -1.5, 16, 3);
+
+    // Hot hyper-energetic white core
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-6, -0.5, 13, 1);
+  } else if (wType === 'plasma') {
+    // Heavy Pulsating Emerald/Neon Plasma Sphere
+    const orbPulse = Math.sin(gameTime * 15 + p.x) * 1.5;
+
+    // Glowing ionic aura
+    ctx.fillStyle = 'rgba(34, 197, 94, 0.35)';
+    ctx.beginPath();
+    ctx.arc(0, 0, 7 + orbPulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Dark outline
+    ctx.fillStyle = '#064e3b';
+    ctx.beginPath();
+    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Radiant emerald body
+    ctx.fillStyle = '#22c55e';
+    ctx.beginPath();
+    ctx.arc(0, 0, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hot central core
+    ctx.fillStyle = '#86efac';
+    ctx.beginPath();
+    ctx.arc(-1, -1, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(-0.5, -0.5, 1, 1);
+  } else {
+    // Default Silenced Pistol 9mm bullet
+    ctx.rotate(angle);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(-3, -2, 6, 4);
+    ctx.fillStyle = '#f6e05e';
+    ctx.fillRect(-2, -1, 4, 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, -0.5, 2, 1);
   }
 
   ctx.restore();

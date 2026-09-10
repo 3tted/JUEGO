@@ -43,6 +43,118 @@ class SoundSystem {
     this.playNoise(0.04, 0.3 * this.volume, 800);
   }
 
+  public playShotgunShot() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(180, t);
+    osc.frequency.exponentialRampToValueAtTime(30, t + 0.18);
+
+    gain.gain.setValueAtTime(this.volume * 0.9, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.19);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.19);
+
+    // Heavy concussive explosion noise blast
+    this.playNoise(0.16, 0.7 * this.volume, 1200);
+  }
+
+  public playLaserShot() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    // High frequency sci-fi laser chirp
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(1600, t);
+    osc.frequency.exponentialRampToValueAtTime(320, t + 0.08);
+
+    gain.gain.setValueAtTime(this.volume * 0.45, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.08);
+  }
+
+  public playPlasmaShot() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    // Heavy bass wobble / plasma pulse
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(280, t);
+    osc.frequency.exponentialRampToValueAtTime(45, t + 0.22);
+
+    gain.gain.setValueAtTime(this.volume * 0.8, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.23);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.23);
+
+    this.playNoise(0.09, 0.4 * this.volume, 2400);
+  }
+
+  public playWeaponPickup() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const t = this.ctx.currentTime;
+    const notes = [440, 554.37, 659.25, 880]; // A4, C#5, E5, A5
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      const start = t + idx * 0.05;
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(this.volume * 0.4, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.12);
+      osc.connect(gain);
+      gain.connect(this.ctx!.destination);
+      osc.start(start);
+      osc.stop(start + 0.12);
+    });
+  }
+
+  public playLaserImpact() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    this.playNoise(0.06, 0.35 * this.volume, 3200);
+  }
+
+  public playShotgunImpact() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    this.playNoise(0.12, 0.6 * this.volume, 900);
+  }
+
   public playEnemyShot() {
     if (!this.enabled) return;
     this.init();

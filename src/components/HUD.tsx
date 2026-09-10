@@ -1,6 +1,7 @@
 import React from 'react';
 import { PlayerState, DungeonFloor, RoomInstance } from '../types';
-import { Map, RefreshCw, Volume2, VolumeX, Route, Trophy, Save } from 'lucide-react';
+import { Map, RefreshCw, Volume2, VolumeX, Route, Trophy, Save, Crosshair, Zap, Flame } from 'lucide-react';
+import { getWeaponDef } from '../game/weapons';
 
 interface HUDProps {
   player: PlayerState;
@@ -38,6 +39,7 @@ export const HUD: React.FC<HUDProps> = ({
   const currentHealth = Math.round(player.health);
   const maxHealth = player.maxHealth || 8;
   const hpRatio = Math.max(0, Math.min(1, currentHealth / maxHealth));
+  const currentWeaponDef = getWeaponDef(player.currentWeapon || 'pistol');
 
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-3 sm:p-5 select-none font-['Press_Start_2P',monospace]">
@@ -47,37 +49,76 @@ export const HUD: React.FC<HUDProps> = ({
         <div className="flex flex-col gap-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
           {/* Row 1: Weapon Box + Health Bar */}
           <div className="flex items-stretch gap-1">
-            {/* Weapon Box with Bullet Shells & Slot Number "2" */}
-            <div className="w-12 h-14 bg-black border-2 border-white rounded-t-md flex flex-col items-center justify-between p-1">
-              {/* 3 bullet shells at top */}
+            {/* Weapon Box with Weapon Type indicator & Slot Number */}
+            <div
+              className="w-12 h-14 bg-black border-2 rounded-t-md flex flex-col items-center justify-between p-1 transition-colors"
+              style={{ borderColor: currentWeaponDef.color }}
+              title={`Arma: ${currentWeaponDef.name}`}
+            >
+              {/* Ammo/energy indicators matching weapon tech */}
               <div className="flex gap-1 justify-center pt-0.5">
-                <div className="w-1.5 h-3 bg-red-600 border border-black rounded-t-sm" />
-                <div className="w-1.5 h-3 bg-red-600 border border-black rounded-t-sm" />
-                <div className="w-1.5 h-3 bg-red-600 border border-black rounded-t-sm" />
+                <div
+                  className="w-1.5 h-3 border border-black rounded-t-sm"
+                  style={{ backgroundColor: currentWeaponDef.color }}
+                />
+                <div
+                  className="w-1.5 h-3 border border-black rounded-t-sm"
+                  style={{ backgroundColor: currentWeaponDef.color }}
+                />
+                <div
+                  className="w-1.5 h-3 border border-black rounded-t-sm"
+                  style={{ backgroundColor: currentWeaponDef.color }}
+                />
               </div>
-              {/* Bold slot number "2" */}
-              <span className="text-white text-xl font-bold tracking-tight pb-0.5">
-                {player.activeWeaponSlot || 2}
+              {/* Bold slot number or weapon code */}
+              <span
+                className="text-xl font-bold tracking-tight pb-0.5"
+                style={{ color: currentWeaponDef.color }}
+              >
+                {player.currentWeapon === 'shotgun'
+                  ? 'SG'
+                  : player.currentWeapon === 'laser'
+                  ? 'LZ'
+                  : player.currentWeapon === 'plasma'
+                  ? 'PL'
+                  : player.activeWeaponSlot || '2'}
               </span>
             </div>
 
-            {/* Red Health Bar with "8/8" centered */}
-            <div className="relative w-48 sm:w-64 h-8 bg-black border-2 border-white flex items-center overflow-hidden">
-              {/* Red fill */}
-              <div
-                className="h-full bg-[#ff2000] transition-all duration-150"
-                style={{ width: `${hpRatio * 100}%` }}
-              />
-              {/* Text "8/8" centered in bold white pixel font with black outline */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            {/* Health Bar + Current Weapon Banner Stack */}
+            <div className="flex flex-col gap-0.5">
+              {/* Red Health Bar with "8/8" centered */}
+              <div className="relative w-48 sm:w-64 h-8 bg-black border-2 border-white flex items-center overflow-hidden">
+                {/* Red fill */}
+                <div
+                  className="h-full bg-[#ff2000] transition-all duration-150"
+                  style={{ width: `${hpRatio * 100}%` }}
+                />
+                {/* Text "8/8" centered in bold white pixel font with black outline */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span
+                    className="text-white text-sm font-bold tracking-widest"
+                    style={{
+                      textShadow:
+                        '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 2px 0 #000, 0 -2px 0 #000',
+                    }}
+                  >
+                    {currentHealth}/{maxHealth}
+                  </span>
+                </div>
+              </div>
+
+              {/* Weapon Banner: Name + Attack Style Description */}
+              <div className="flex items-center gap-1.5 px-2 py-0.5 bg-black/90 border border-stone-800 rounded text-[8px] sm:text-[9px]">
                 <span
-                  className="text-white text-sm font-bold tracking-widest"
-                  style={{
-                    textShadow:
-                      '-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 2px 0 #000, 0 -2px 0 #000',
-                  }}
-                >
-                  {currentHealth}/{maxHealth}
+                  className="w-2 h-2 rounded-full inline-block animate-pulse"
+                  style={{ backgroundColor: currentWeaponDef.color, boxShadow: `0 0 6px ${currentWeaponDef.color}` }}
+                />
+                <span className="font-bold tracking-wider" style={{ color: currentWeaponDef.color }}>
+                  {currentWeaponDef.name.toUpperCase()}
+                </span>
+                <span className="text-stone-400 text-[7px] sm:text-[8px] font-sans font-semibold">
+                  • {currentWeaponDef.fireMode}
                 </span>
               </div>
             </div>

@@ -13,8 +13,10 @@ import {
   RoomInstance,
   SmokeCloud,
   TerminalEntity,
+  WeaponType,
 } from '../types';
 import { sound } from './audio';
+import { getWeaponDef } from './weapons';
 import { CENTER_TILE, DOOR_E, DOOR_N, DOOR_S, DOOR_W, ROOM_HEIGHT, ROOM_WIDTH, TILE_SIZE } from './prefabs';
 import {
   drawAgent007Player,
@@ -22,6 +24,7 @@ import {
   drawBarrelCactus,
   drawBoneCarcass,
   drawConsoleTerminal,
+  drawCustomProjectile,
   drawExplosivesChest,
   drawNuclearCrosshair,
   drawNuclearThroneDoor,
@@ -30,6 +33,7 @@ import {
   drawRadPellet,
   drawSaguaroCactus,
   drawScorpion,
+  drawWeaponPickup,
 } from './pixelSprites';
 
 export interface FloatingNotice {
@@ -221,6 +225,7 @@ export class GameEngine {
       swingProgress: 0,
       explosivesAmmo: restoredSave?.explosivesAmmo ?? 18,
       activeWeaponSlot: 2,
+      currentWeapon: 'pistol',
     };
 
     this.cameraX = startX;
@@ -443,8 +448,9 @@ export class GameEngine {
   }
 
   /**
-   * Instancia y dispara un proyectil en la dirección especificada por las flechitas.
-   * Totalmente independiente del movimiento de WASD y sin lectura de ratón.
+   * Instancia y dispara proyectiles en la dirección especificada por las flechitas,
+   * adaptando el número de proyectiles, dispersión, velocidad, daño, retroceso y sonido
+   * según el arma avanzada equipada por el Agente 007.
    */
   public fireProjectileInDirection(dirX: number, dirY: number) {
     const len = Math.hypot(dirX, dirY);
@@ -454,17 +460,23 @@ export class GameEngine {
     const angle = Math.atan2(normY, normX);
 
     this.player.angle = angle;
-    this.screenShake = Math.max(this.screenShake, 3);
-    sound.playSuppressedShot();
+    const weapon = getWeaponDef(this.player.currentWeapon);
 
-    const speed = 720;
-    const spread = (Math.random() - 0.5) * 0.04;
-    const finalAngle = angle + spread;
+    // Retroceso dinámico y pantalla sacudida según calibre del arma
+    this.screenShake = Math.max(this.screenShake, weapon.recoil);
 
-    const bx = this.player.x + Math.cos(finalAngle) * 16;
-    const by = this.player.y + Math.sin(finalAngle) * 16;
+    // Efecto de audio diferenciado por arma
+    if (this.player.currentWeapon === 'shotgun') {
+      sound.playShotgunShot();
+    } else if (this.player.currentWeapon === 'laser') {
+      sound.playLaserShot();
+    } else if (this.player.currentWeapon === 'plasma') {
+      sound.playPlasmaShot();
+    } else {
+      sound.playSuppressedShot();
+    }
 
-    // Desvío / parada de proyectiles enemigos cercanos al disparar
+    // Desvío / parada táctica de proyectiles enemigos cercanos al disparar
     const sliceRange = 36;
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
@@ -473,16 +485,17 @@ export class GameEngine {
         const dY = p.y - this.player.y;
         if (Math.hypot(dX, dY) < sliceRange + 8) {
           p.fromPlayer = true;
-          p.vx = Math.cos(finalAngle) * 550;
-          p.vy = Math.sin(finalAngle) * 550;
+          p.vx = Math.cos(angle) * 550;
+          p.vy = Math.sin(angle) * 550;
           this.createSparks(p.x, p.y, '#ffffff');
         }
       }
     }
 
-    // Gestión de munición y recarga automática
+    // Gestión de munición del cargador
+    const ammoUsed = Math.min(weapon.ammoCost, Math.max(1, this.player.magAmmo));
     if (this.player.magAmmo > 0) {
-      this.player.magAmmo--;
+      this.player.magAmmo = Math.max(0, this.player.magAmmo - ammoUsed);
       if (this.player.magAmmo === 0 && !this.player.isReloading && this.player.ammo > 0) {
         this.startReload();
       }
@@ -490,32 +503,77 @@ export class GameEngine {
       this.startReload();
     }
 
-    // Instanciar proyectil
-    this.projectiles.push({
-      id: Math.random().toString(),
-      x: bx,
-      y: by,
-      vx: Math.cos(finalAngle) * speed,
-      vy: Math.sin(finalAngle) * speed,
-      fromPlayer: true,
-      damage: 3.5,
-      distanceTravelled: 0,
-      maxDistance: 650,
-    });
+    // Instanciación de proyectiles según el patrón del arma (Escopeta dispara múltiples perdigones)
+    const count = weapon.projectilesPerShot;
+    for (let i = 0; i < count; i++) {
+      let pelletAngle = angle;
+      if (count > 1) {
+        const fraction = (i / (count - 1)) - 0.5; // Abanico simétrico centrado
+        pelletAngle = angle + fraction * weapon.spread + (Math.random() - 0.5) * 0.05;
+      } else {
+        pelletAngle = angle + (Math.random() - 0.5) * weapon.spread;
+      }
 
-    // Casquillo expulsado
-    const cAngle = angle - Math.PI / 2 + (Math.random() - 0.5) * 0.5;
-    this.casings.push({
-      x: this.player.x,
-      y: this.player.y,
-      vx: Math.cos(cAngle) * 80,
-      vy: Math.sin(cAngle) * 80,
-      rotation: Math.random() * Math.PI * 2,
-      rotationSpeed: (Math.random() - 0.5) * 15,
-    });
+      const pSpeed = weapon.speed * (0.94 + Math.random() * 0.12);
+      const bx = this.player.x + Math.cos(pelletAngle) * 18;
+      const by = this.player.y + Math.sin(pelletAngle) * 18;
 
-    // Chispas del cañón
-    this.createSparks(bx, by, '#ffdd44');
+      this.projectiles.push({
+        id: Math.random().toString(),
+        x: bx,
+        y: by,
+        vx: Math.cos(pelletAngle) * pSpeed,
+        vy: Math.sin(pelletAngle) * pSpeed,
+        fromPlayer: true,
+        damage: weapon.damage,
+        distanceTravelled: 0,
+        maxDistance: weapon.maxDistance,
+        weaponType: this.player.currentWeapon,
+        color: weapon.color,
+        glowColor: weapon.glowColor,
+      });
+    }
+
+    // Muzzle flash y casquillos según tecnología del arma
+    const muzzleX = this.player.x + Math.cos(angle) * 20;
+    const muzzleY = this.player.y + Math.sin(angle) * 20;
+
+    if (this.player.currentWeapon === 'shotgun') {
+      // Destello de pólvora y doble casquillo rojo
+      this.createSparks(muzzleX, muzzleY, '#ea580c');
+      this.createSparks(muzzleX, muzzleY, '#f97316');
+      for (let k = 0; k < 2; k++) {
+        const cAngle = angle - Math.PI / 2 + (Math.random() - 0.5) * 0.6;
+        this.casings.push({
+          x: this.player.x,
+          y: this.player.y,
+          vx: Math.cos(cAngle) * (70 + Math.random() * 30),
+          vy: Math.sin(cAngle) * (70 + Math.random() * 30),
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: (Math.random() - 0.5) * 20,
+        });
+      }
+    } else if (this.player.currentWeapon === 'laser') {
+      // Descarga fotónica azul / cian sin casquillos
+      this.createSparks(muzzleX, muzzleY, '#38bdf8');
+      this.createSparks(muzzleX, muzzleY, '#ffffff');
+    } else if (this.player.currentWeapon === 'plasma') {
+      // Orbe de plasma verde esmeralda ionizado
+      this.createSparks(muzzleX, muzzleY, '#22c55e');
+      this.createSparks(muzzleX, muzzleY, '#86efac');
+    } else {
+      // Walther PPK 9mm Silenciada reglamentaria
+      this.createSparks(muzzleX, muzzleY, '#ffdd44');
+      const cAngle = angle - Math.PI / 2 + (Math.random() - 0.5) * 0.5;
+      this.casings.push({
+        x: this.player.x,
+        y: this.player.y,
+        vx: Math.cos(cAngle) * 80,
+        vy: Math.sin(cAngle) * 80,
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 15,
+      });
+    }
   }
 
   private shootBullet() {
@@ -653,7 +711,8 @@ export class GameEngine {
       // Disparo automático continuo respetando la cadencia de fuego (Fire Rate)
       if (this.shootCooldownTimer <= 0) {
         this.fireProjectileInDirection(shootX, shootY);
-        this.shootCooldownTimer = this.fireRate;
+        const curW = getWeaponDef(this.player.currentWeapon);
+        this.shootCooldownTimer = curW.fireRate;
       }
     }
 
@@ -918,6 +977,9 @@ export class GameEngine {
           }
         } else if (item.type === 'intel') {
           currentLegend = `INTEL / RADS (+5): Documentos confidenciales de la base enemiga.`;
+        } else if (item.type === 'weapon') {
+          const wDef = getWeaponDef(item.weaponType || 'shotgun');
+          currentLegend = `[ARMA AVANZADA] ${wDef.name.toUpperCase()} (${wDef.fireMode}): Písala para equiparla y cambiar tu estilo de ataque.`;
         }
       }
 
@@ -956,6 +1018,29 @@ export class GameEngine {
           this.player.intelCollected += 5;
           currentRoom.items.splice(i, 1);
           this.addFloatingNotice(item.x, item.y, '+5 INTEL', '#4ade80');
+        } else if (item.type === 'weapon') {
+          const newWeapon = item.weaponType || 'shotgun';
+          const wDef = getWeaponDef(newWeapon);
+          sound.playWeaponPickup();
+          this.player.currentWeapon = newWeapon;
+          this.fireRate = wDef.fireRate;
+          this.shootCooldownTimer = 0;
+          currentRoom.items.splice(i, 1);
+          this.addFloatingNotice(item.x, item.y - 12, `¡EQUIPADO: ${wDef.shortName}!`, wDef.color);
+          this.screenShake = 4;
+          for (let s = 0; s < 14; s++) {
+            const sAngle = (s / 14) * Math.PI * 2;
+            this.particles.push({
+              x: this.player.x,
+              y: this.player.y,
+              vx: Math.cos(sAngle) * 85,
+              vy: Math.sin(sAngle) * 85,
+              color: wDef.color,
+              size: 3,
+              alpha: 1,
+              decay: 2.2,
+            });
+          }
         }
       }
     }
@@ -1045,7 +1130,11 @@ export class GameEngine {
 
       // Hit wall
       if (this.checkWallCollision(p.x, p.y, 3) || p.distanceTravelled > p.maxDistance) {
-        this.createSparks(p.x, p.y, p.fromPlayer ? '#f6e05e' : '#e53e3e');
+        if (p.fromPlayer) {
+          this.createWeaponImpact(p.x, p.y, p.weaponType || 'pistol', false);
+        } else {
+          this.createSparks(p.x, p.y, '#e53e3e');
+        }
         this.projectiles.splice(i, 1);
         continue;
       }
@@ -1071,11 +1160,25 @@ export class GameEngine {
           if (Math.hypot(p.x - g.x, p.y - g.y) < 15) {
             g.health -= p.damage * 15;
             g.state = 'alert';
-            this.createSparks(p.x, p.y, '#ffffff');
-            this.screenShake = 3;
+            this.createWeaponImpact(p.x, p.y, p.weaponType || 'pistol', true);
             if (g.health <= 0) {
               g.state = 'dead';
               this.spawnRadDrops(g.x, g.y, 2);
+              // Chance to drop an advanced weapon from defeated guards
+              if (g.isHeavy || Math.random() < 0.25) {
+                const pool: WeaponType[] = ['shotgun', 'laser', 'plasma'];
+                const pick = pool[Math.floor(Math.random() * pool.length)];
+                const wDef = getWeaponDef(pick);
+                currentRoom.items.push({
+                  id: `drop_w_${Math.random().toString(36).substr(2, 6)}`,
+                  x: g.x,
+                  y: g.y,
+                  type: 'weapon',
+                  weaponType: pick,
+                  name: wDef.name,
+                  amount: 1,
+                });
+              }
             }
             hit = true;
             break;
@@ -1086,11 +1189,23 @@ export class GameEngine {
           const boss = currentRoom.boss;
           if (Math.hypot(p.x - boss.x, p.y - boss.y) < 24) {
             boss.health -= p.damage * 10;
-            this.createSparks(p.x, p.y, '#ff2020');
-            this.screenShake = 4;
+            this.createWeaponImpact(p.x, p.y, p.weaponType || 'pistol', true);
             if (boss.health <= 0) {
               boss.defeated = true;
               this.spawnRadDrops(boss.x, boss.y, 8);
+              // Boss drops advanced heavy weapon reward
+              const pool: WeaponType[] = ['laser', 'plasma'];
+              const pick = pool[Math.floor(Math.random() * pool.length)];
+              const wDef = getWeaponDef(pick);
+              currentRoom.items.push({
+                id: `boss_drop_w_${Math.random().toString(36).substr(2, 6)}`,
+                x: boss.x,
+                y: boss.y,
+                type: 'weapon',
+                weaponType: pick,
+                name: wDef.name,
+                amount: 1,
+              });
             }
             hit = true;
           }
@@ -1100,6 +1215,99 @@ export class GameEngine {
           this.projectiles.splice(i, 1);
         }
       }
+    }
+  }
+
+  public createWeaponImpact(x: number, y: number, weaponType: WeaponType = 'pistol', isEnemy: boolean = true) {
+    if (weaponType === 'shotgun') {
+      sound.playShotgunImpact();
+      this.screenShake = Math.max(this.screenShake, 5);
+      // Kinetic combustion sparks and fiery shrapnel
+      for (let s = 0; s < 9; s++) {
+        const angle = Math.random() * Math.PI * 2;
+        const spd = 60 + Math.random() * 140;
+        this.particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * spd,
+          vy: Math.sin(angle) * spd,
+          color: Math.random() > 0.5 ? '#f97316' : '#ea580c',
+          size: Math.random() * 2.5 + 1.5,
+          alpha: 1,
+          decay: 2.8,
+        });
+      }
+      // Smoke puff
+      for (let sm = 0; sm < 3; sm++) {
+        this.particles.push({
+          x: x + (Math.random() - 0.5) * 6,
+          y: y + (Math.random() - 0.5) * 6,
+          vx: (Math.random() - 0.5) * 20,
+          vy: -15 - Math.random() * 20,
+          color: '#71717a',
+          size: 4,
+          alpha: 0.6,
+          decay: 1.2,
+        });
+      }
+    } else if (weaponType === 'laser') {
+      sound.playLaserImpact();
+      this.screenShake = Math.max(this.screenShake, 2);
+      // High-velocity cyan ionizing electric sparks
+      for (let s = 0; s < 8; s++) {
+        const angle = Math.random() * Math.PI * 2;
+        const spd = 120 + Math.random() * 180;
+        this.particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * spd,
+          vy: Math.sin(angle) * spd,
+          color: Math.random() > 0.4 ? '#38bdf8' : '#ffffff',
+          size: 2,
+          alpha: 1,
+          decay: 3.8,
+        });
+      }
+    } else if (weaponType === 'plasma') {
+      sound.playPlasmaShot();
+      this.screenShake = Math.max(this.screenShake, 6);
+      // Emerald plasma detonation
+      for (let s = 0; s < 12; s++) {
+        const angle = Math.random() * Math.PI * 2;
+        const spd = 50 + Math.random() * 120;
+        this.particles.push({
+          x,
+          y,
+          vx: Math.cos(angle) * spd,
+          vy: Math.sin(angle) * spd,
+          color: Math.random() > 0.4 ? '#22c55e' : '#86efac',
+          size: Math.random() * 3 + 2,
+          alpha: 1,
+          decay: 2.2,
+        });
+      }
+      // Radial splash damage on nearby enemies within 34px
+      if (isEnemy) {
+        const currentRoom = this.dungeon.rooms.get(this.player.currentRoomId);
+        if (currentRoom) {
+          for (const g of currentRoom.guards) {
+            if (g.state === 'dead') continue;
+            const dist = Math.hypot(g.x - x, g.y - y);
+            if (dist > 0 && dist < 34) {
+              g.health -= 35;
+              g.state = 'alert';
+              if (g.health <= 0) {
+                g.state = 'dead';
+                this.spawnRadDrops(g.x, g.y, 2);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      // Default Silenced Pistol
+      this.createSparks(x, y, isEnemy ? '#ffffff' : '#f6e05e');
+      this.screenShake = Math.max(this.screenShake, 3);
     }
   }
 
@@ -1243,14 +1451,9 @@ export class GameEngine {
       drawRadPellet(ctx, rad.x, rad.y);
     }
 
-    // 5. Draw Projectiles
+    // 5. Draw Projectiles (Weapon-specific visuals: Shotgun pellets, Laser beam pulses, Plasma orbs)
     for (const p of this.projectiles) {
-      ctx.save();
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(Math.floor(p.x) - 2, Math.floor(p.y) - 2, 5, 5);
-      ctx.fillStyle = p.fromPlayer ? '#f6e05e' : '#ff2020';
-      ctx.fillRect(Math.floor(p.x) - 1, Math.floor(p.y) - 1, 3, 3);
-      ctx.restore();
+      drawCustomProjectile(ctx, p, this.gameTime);
     }
 
     // 6. Draw Dust / Sparks
@@ -1262,7 +1465,7 @@ export class GameEngine {
       ctx.restore();
     }
 
-    // 7. Draw Agent 007 Protagonist (Black Tuxedo, Bowtie, Walther PPK Silencer / Katana)
+    // 7. Draw Agent 007 Protagonist (Black Tuxedo, Bowtie, Equipped Weapon Model / Katana)
     const isMoving = (this.keys['KeyW'] || this.keys['KeyS'] || this.keys['KeyA'] || this.keys['KeyD']);
     drawAgent007Player(
       ctx,
@@ -1272,7 +1475,8 @@ export class GameEngine {
       this.player.walkCycle,
       !!isMoving,
       this.player.isSwinging,
-      this.player.swingProgress
+      this.player.swingProgress,
+      this.player.currentWeapon
     );
 
     // 8. Draw Floating World Notices (e.g. +12 BALAS, or MUNICIÓN LLENA)
@@ -1391,6 +1595,15 @@ export class GameEngine {
 
     // Draw Items
     for (const item of room.items) {
+      const dToPlayer = Math.hypot(this.player.x - item.x, this.player.y - item.y);
+      const isNearby = dToPlayer < 75;
+
+      // Special rendering for Weapon Pickups
+      if (item.type === 'weapon') {
+        drawWeaponPickup(ctx, item.x, item.y, item.weaponType || 'shotgun', this.gameTime, isNearby);
+        continue;
+      }
+
       // Glowing pickup zone ring indicating the enlarged hitbox
       const auraPulse = Math.sin(this.gameTime * 4 + item.x) * 0.12 + 0.22;
       ctx.save();
@@ -1416,8 +1629,7 @@ export class GameEngine {
       }
 
       // Visual indicator if item cannot be collected due to full inventory
-      const dToPlayer = Math.hypot(this.player.x - item.x, this.player.y - item.y);
-      if (dToPlayer < 75) {
+      if (isNearby) {
         let badgeText: string | null = null;
         if (item.type === 'ammo' && this.player.ammo >= this.player.maxAmmo) {
           badgeText = '[MUNICIÓN LLENA]';

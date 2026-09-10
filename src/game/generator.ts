@@ -376,6 +376,73 @@ export function generateDungeon(seed: number, floorLevel: number = 1): DungeonFl
     }
 
     const items = template.spawnItems ? template.spawnItems(worldX, worldY) : [];
+
+    // Spawn advanced weapons based on room type
+    if (rType === 'START') {
+      // In Start Room, provide advanced weapons for player to test right away!
+      items.push({
+        id: `start_w_shotgun_${node.id}`,
+        x: worldX + 5 * TILE_SIZE + 24,
+        y: worldY + 4 * TILE_SIZE + 24,
+        type: 'weapon',
+        weaponType: 'shotgun',
+        name: 'Escopeta Táctica',
+        amount: 1,
+      });
+      items.push({
+        id: `start_w_laser_${node.id}`,
+        x: worldX + 9 * TILE_SIZE + 24,
+        y: worldY + 4 * TILE_SIZE + 24,
+        type: 'weapon',
+        weaponType: 'laser',
+        name: 'Fusil Láser',
+        amount: 1,
+      });
+    } else if (rType === 'ARMORY') {
+      items.push({
+        id: `armory_w_1_${node.id}`,
+        x: worldX + 4 * TILE_SIZE + 24,
+        y: worldY + 5 * TILE_SIZE + 24,
+        type: 'weapon',
+        weaponType: 'shotgun',
+        name: 'Escopeta Táctica',
+        amount: 1,
+      });
+      items.push({
+        id: `armory_w_2_${node.id}`,
+        x: worldX + 10 * TILE_SIZE + 24,
+        y: worldY + 5 * TILE_SIZE + 24,
+        type: 'weapon',
+        weaponType: 'plasma',
+        name: 'Cañón de Plasma',
+        amount: 1,
+      });
+    } else if (rType === 'LABORATORY') {
+      items.push({
+        id: `lab_w_${node.id}`,
+        x: worldX + 7 * TILE_SIZE + 24,
+        y: worldY + 5 * TILE_SIZE + 24,
+        type: 'weapon',
+        weaponType: Math.random() > 0.5 ? 'laser' : 'plasma',
+        name: 'Fusil Experimental',
+        amount: 1,
+      });
+    } else if (rType === 'PATROL' || rType === 'SERVER_HUB') {
+      if (Math.random() < 0.45) {
+        const pool: Array<'shotgun' | 'laser' | 'plasma'> = ['shotgun', 'laser', 'plasma'];
+        const chosen = pool[Math.floor(Math.random() * pool.length)];
+        items.push({
+          id: `room_w_${node.id}`,
+          x: worldX + 7 * TILE_SIZE + 24,
+          y: worldY + 5 * TILE_SIZE + 24,
+          type: 'weapon',
+          weaponType: chosen,
+          name: chosen === 'shotgun' ? 'Escopeta Táctica' : chosen === 'laser' ? 'Fusil Láser' : 'Cañón de Plasma',
+          amount: 1,
+        });
+      }
+    }
+
     const boss = template.spawnBoss ? template.spawnBoss(worldX, worldY) : undefined;
 
     const instance: RoomInstance = {

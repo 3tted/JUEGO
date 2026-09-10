@@ -104,6 +104,14 @@ El juego utiliza un esquema de control arcade 100% de teclado (sin necesidad de 
 ## 📂 Estructura del Proyecto
 
 ```text
+├── docs/                        # Documentación completa de lógica de negocio
+│   ├── README.md                # Índice general de la documentación
+│   ├── 01_vision_general_y_core_loop.md
+│   ├── 02_mecanicas_jugador_y_combate.md
+│   ├── 03_generacion_procedural.md
+│   ├── 04_inteligencia_artificial_enemigos.md
+│   ├── 05_sistemas_secundarios.md
+│   └── 06_arquitectura_datos_firebase.md
 ├── src/
 │   ├── components/              # Componentes de React para la interfaz de usuario
 │   │   ├── HUD.tsx              # Barra superior con salud, munición, piso y estado
@@ -111,15 +119,18 @@ El juego utiliza un esquema de control arcade 100% de teclado (sin necesidad de 
 │   │   ├── Modals.tsx           # Modales de Game Over, Piso Completado e Instrucciones
 │   │   ├── TerminalMinigameModal.tsx # Minijuego interactivo de descifrado
 │   │   └── VirtualControls.tsx  # Soporte de controles en pantalla
-│   ├── game/                    # Motor central del juego
+│   ├── firebase/                # Conexión, autenticación y persistencia Firestore
+│   │   ├── FirebaseContext.tsx  # Proveedor de contexto React para Auth y Firestore
+│   │   ├── config.ts            # Inicialización de la app Firebase
+│   │   └── service.ts           # Servicios de lectura/escritura de perfiles y ranking
+│   ├── game/                    # Motor central del juego en Canvas 2D
 │   │   ├── engine.ts            # Lógica principal, bucle de juego, físicas y render
-│   │   ├── dungeonGen.ts        # Generador procedimental de mazmorras
+│   │   ├── generator.ts         # Generador procedimental de mazmorras y camino crítico
+│   │   ├── prefabs.ts           # Plantillas matriciales de salas y constantes
 │   │   ├── pixelSprites.ts      # Sprites matriciales y dibujado pixel art
-│   │   ├── audio.ts             # Sintetizador de audio procedural (Web Audio)
-│   │   └── types.ts             # Tipos e interfaces del motor de juego
-│   ├── services/
-│   │   └── leaderboardService.ts # Conexión e integración con Firebase Firestore
+│   │   └── audio.ts             # Sintetizador de audio procedural (Web Audio API)
 │   ├── App.tsx                  # Componente raíz y orquestador del canvas
+│   ├── types.ts                 # Tipos TypeScript compartidos del dominio
 │   └── main.tsx                 # Punto de entrada de React
 ├── public/                      # Recursos estáticos
 ├── firestore.rules              # Reglas de seguridad para Firestore
