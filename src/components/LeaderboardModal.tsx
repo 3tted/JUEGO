@@ -20,6 +20,7 @@ import {
   UserCheck,
   AlertCircle,
 } from 'lucide-react';
+import { InfiltrationLogo } from './InfiltrationLogo';
 import { useFirebase } from '../firebase/FirebaseContext';
 import {
   LeaderboardEntryData,
@@ -188,11 +189,16 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b-2 border-[#3d322a] pb-3 mb-3">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-[#4ade80]" />
-            <h2 className="text-xs sm:text-sm tracking-wider text-[#e2b044] uppercase">
-              INDUSTRIAL VAULT & CLOUD
-            </h2>
+          <div className="flex items-center gap-2.5">
+            <InfiltrationLogo size="sm" withGlow={true} />
+            <div>
+              <h2 className="text-xs sm:text-sm tracking-wider text-[#e2b044] uppercase leading-none">
+                INFILTRATION // VAULT & CLOUD
+              </h2>
+              <span className="text-[8px] text-red-500 font-mono tracking-wider font-bold">
+                EXPEDIENTES CONFIDENCIALES DE AGENTES
+              </span>
+            </div>
           </div>
           <button
             id="close-leaderboard-btn"

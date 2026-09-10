@@ -9,6 +9,7 @@ import { LevelCompletedModal, GameOverModal, InstructionsModal } from './compone
 import { LeaderboardModal } from './components/LeaderboardModal';
 import { TerminalMinigameModal } from './components/TerminalMinigameModal';
 import { VirtualControls } from './components/VirtualControls';
+import { InfiltrationLogo } from './components/InfiltrationLogo';
 import { HelpCircle, Route, Trophy } from 'lucide-react';
 import { useFirebase } from './firebase/FirebaseContext';
 import { submitLeaderboardRun, SavedGameData } from './firebase/service';
@@ -384,10 +385,10 @@ export default function App() {
 
         {/* Verified Transitable Path Notification Badge */}
         {pathVerifiedBadge && (
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-40 bg-black/95 border-2 border-white text-yellow-300 px-4 py-2 font-mono text-[10px] shadow-2xl flex items-center gap-2.5 animate-in fade-in slide-in-from-top-4 duration-300">
-            <Route className="w-4 h-4 text-yellow-400 animate-pulse" />
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-40 bg-black/95 border-2 border-red-600 text-yellow-300 px-4 py-2 font-mono text-[10px] shadow-2xl flex items-center gap-2.5 animate-in fade-in slide-in-from-top-4 duration-300 rounded-md">
+            <InfiltrationLogo size="xs" withGlow={true} />
             <span>
-              <strong>DESIERTO GENERADO:</strong> Ruta 100% transitable garantizada hasta el jefe.
+              <strong className="text-white tracking-wider">INFILTRATION //</strong> Sector {floorLevel} generado con ruta 100% transitable.
             </span>
           </div>
         )}
@@ -442,11 +443,12 @@ export default function App() {
         {/* Floating Controls Guide Button */}
         <button
           onClick={() => setShowInstructions(true)}
-          className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 bg-black/80 hover:bg-black border border-stone-600 text-stone-300 px-3 py-1 rounded text-[9px] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-          title="Ver Controles [H]"
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 bg-black/85 hover:bg-black border border-red-900/70 hover:border-red-500 text-stone-300 px-2.5 py-1 rounded-full text-[9px] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-lg shadow-black/80 backdrop-blur-sm"
+          title="Manual de Operaciones [H]"
         >
-          <HelpCircle className="w-3 h-3 text-yellow-400" />
-          <span>AYUDA [H]</span>
+          <InfiltrationLogo size="xs" withGlow={false} />
+          <span className="font-bold text-white tracking-wider">INFILTRATION</span>
+          <span className="text-red-400 font-mono text-[8px]">[H] AYUDA</span>
         </button>
 
         {/* Mobile Virtual Twin-Stick Controls */}
@@ -482,6 +484,13 @@ export default function App() {
             engineRef.current.keys['KeyE'] = true;
             setTimeout(() => {
               if (engineRef.current) engineRef.current.keys['KeyE'] = false;
+            }, 250);
+          }}
+          onPickupWeapon={() => {
+            if (!engineRef.current) return;
+            engineRef.current.keys['KeyF'] = true;
+            setTimeout(() => {
+              if (engineRef.current) engineRef.current.keys['KeyF'] = false;
             }, 250);
           }}
           onSwitchWeaponSlot={(slot) => {

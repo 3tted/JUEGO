@@ -9,6 +9,7 @@ interface VirtualControlsProps {
   onDash: () => void;
   onReload: () => void;
   onInteract: () => void;
+  onPickupWeapon?: () => void;
   onSwitchWeaponSlot?: (slot: 1 | 2) => void;
   activeWeaponSlot?: 1 | 2;
   hasSecondWeapon?: boolean;
@@ -22,6 +23,7 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({
   onDash,
   onReload,
   onInteract,
+  onPickupWeapon,
   onSwitchWeaponSlot,
   activeWeaponSlot = 1,
   hasSecondWeapon = false,
@@ -292,7 +294,26 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({
             <RotateCcw className="w-4 h-4 text-cyan-300" />
           </button>
 
-          {/* Interact / Substitute / Hack Button [E] */}
+          {/* Pickup / Substitute Weapon Button [F] */}
+          {onPickupWeapon && (
+            <button
+              onTouchStart={(e) => {
+                e.preventDefault();
+                onPickupWeapon();
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                onPickupWeapon();
+              }}
+              className="h-10 px-2.5 rounded-full bg-amber-600/90 border-2 border-amber-300 text-white font-mono font-bold text-[10px] flex items-center gap-1 active:scale-90 shadow-md shadow-amber-950/60 cursor-pointer"
+              title="Recoger / Sustituir Arma [F]"
+            >
+              <span>[F]</span>
+              <span className="text-[8px] font-normal opacity-90">ARMA</span>
+            </button>
+          )}
+
+          {/* Interact / Hack Console Button [E] */}
           <button
             onTouchStart={(e) => {
               e.preventDefault();
@@ -302,11 +323,11 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({
               e.preventDefault();
               onInteract();
             }}
-            className="h-10 px-3 rounded-full bg-emerald-600/90 border-2 border-emerald-300 text-white font-mono font-bold text-[10px] flex items-center gap-1 active:scale-90 shadow-md shadow-emerald-950/60 cursor-pointer"
-            title="Interactuar / Sustituir [E]"
+            className="h-10 px-2.5 rounded-full bg-emerald-600/90 border-2 border-emerald-300 text-white font-mono font-bold text-[10px] flex items-center gap-1 active:scale-90 shadow-md shadow-emerald-950/60 cursor-pointer"
+            title="Interactuar Consola / Ascensor [E]"
           >
             <span>[E]</span>
-            <span className="text-[8px] font-normal opacity-90">ACCIÓN</span>
+            <span className="text-[8px] font-normal opacity-90">CONSOLA</span>
           </button>
         </div>
 

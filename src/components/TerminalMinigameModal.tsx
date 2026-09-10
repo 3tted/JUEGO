@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { TerminalEntity, TerminalMinigameType } from '../types';
 import { sound } from '../game/audio';
+import { InfiltrationLogo } from './InfiltrationLogo';
 
 interface TerminalMinigameModalProps {
   isOpen: boolean;
@@ -1384,21 +1385,20 @@ export const TerminalMinigameModal: React.FC<TerminalMinigameModalProps> = ({
         />
 
         {/* Console Header */}
-        <div className="bg-[#0f172a] border-b-2 border-slate-800 p-2.5 sm:p-3 flex items-center justify-between z-10">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#22c55e]" />
-            <Terminal className="w-5 h-5 text-emerald-400" />
+        <div className="bg-[#0f172a] border-b-2 border-slate-800 p-2 sm:p-2.5 flex items-center justify-between z-10">
+          <div className="flex items-center gap-2.5">
+            <InfiltrationLogo size="sm" withGlow={true} />
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold tracking-wider text-slate-100 uppercase">
+                <span className="text-xs font-bold tracking-wider text-slate-100 uppercase leading-none">
                   {currentTheme.title}
                 </span>
                 <span className="text-[8px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
                   {terminal?.label || 'CONSOLA TÁCTICA'}
                 </span>
               </div>
-              <div className="text-[9px] text-slate-400 flex items-center gap-2">
-                <span>SEC-OS v4.2</span>
+              <div className="text-[9px] text-slate-400 flex items-center gap-2 mt-0.5">
+                <span className="text-red-400 font-bold tracking-wider text-[8px]">INFILTRATION OS</span>
                 <span>•</span>
                 <span>NODO SEGURO: ACTIVO</span>
               </div>

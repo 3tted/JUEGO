@@ -122,6 +122,7 @@ export class GameEngine {
   // Proximity Legend & Floating World Notices
   public activeLegend: string | null = null;
   public floatingNotices: FloatingNotice[] = [];
+  public logoImage: HTMLImageElement | null = null;
 
   public setVirtualMove(x: number, y: number) {
     this.virtualMoveVector.x = x;
@@ -274,6 +275,11 @@ export class GameEngine {
 
     startRoom.isVisited = true;
     startRoom.hasBeenRevealed = true;
+
+    if (typeof window !== 'undefined') {
+      this.logoImage = new Image();
+      this.logoImage.src = '/assets/infiltration-logo.svg';
+    }
 
     this.initEvents();
   }
@@ -832,6 +838,11 @@ export class GameEngine {
     this.player.vx = moveX * speed;
     this.player.vy = moveY * speed;
 
+    // Unstuck safeguard: If player is caught in a closed door or wall, push out towards room interior
+    if (this.checkWallCollision(this.player.x, this.player.y, 9)) {
+      this.resolvePlayerStuck();
+    }
+
     const nextX = this.player.x + this.player.vx * dt;
     const nextY = this.player.y + this.player.vy * dt;
 
@@ -1035,17 +1046,16 @@ export class GameEngine {
           const wDef = getWeaponDef(item.weaponType || 'shotgun');
           const currentWDef = getWeaponDef(this.player.currentWeapon);
           if (this.player.weapons[1] === null) {
-            currentLegend = `[ARMA EN EL SUELO] ${wDef.name.toUpperCase()} (${wDef.fireMode}): Presiona [E] para recoger en Ranura 2.`;
+            currentLegend = `[ARMA EN EL SUELO] ${wDef.name.toUpperCase()} (${wDef.fireMode}): Presiona [F] para recoger en Ranura 2.`;
           } else {
-            currentLegend = `[ARMA EN EL SUELO] ${wDef.name.toUpperCase()}: Presiona [E] para SUSTITUIR tu ${currentWDef.name.toUpperCase()} (Ranura ${this.player.activeWeaponSlot}).`;
+            currentLegend = `[ARMA EN EL SUELO] ${wDef.name.toUpperCase()}: Presiona [F] para SUSTITUIR tu ${currentWDef.name.toUpperCase()} (Ranura ${this.player.activeWeaponSlot}).`;
           }
         }
       }
 
-      // Special interaction for Weapon Drops: requires pressing [E] (or [F]) to pick up / substitute
+      // Special interaction for Weapon Drops: requires pressing [F] exclusively to pick up / substitute (avoids conflict with [E] terminals)
       if (item.type === 'weapon') {
-        if (dist < 58 && (this.keys['KeyE'] || this.keys['KeyF'])) {
-          this.keys['KeyE'] = false;
+        if (dist < 58 && this.keys['KeyF']) {
           this.keys['KeyF'] = false;
           const newWeapon = item.weaponType || 'shotgun';
           const wDef = getWeaponDef(newWeapon);
@@ -1714,6 +1724,23 @@ export class GameEngine {
       ctx.fillRect(rb.worldX + tx * TILE_SIZE, rb.worldY + rb.height - 5, TILE_SIZE, 3);
     }
 
+    // Infiltration Floor Insignia Stencil in START room and BOSS room
+    if ((room.type === 'START' || room.type === 'BOSS') && this.logoImage && this.logoImage.complete) {
+      const centerX = rb.worldX + rb.width / 2;
+      const centerY = rb.worldY + rb.height / 2;
+      const logoSize = room.type === 'BOSS' ? 140 : 120;
+      ctx.save();
+      ctx.globalAlpha = room.type === 'BOSS' ? 0.35 : 0.45;
+      ctx.drawImage(
+        this.logoImage,
+        centerX - logoSize / 2,
+        centerY - logoSize / 2,
+        logoSize,
+        logoSize
+      );
+      ctx.restore();
+    }
+
     // B. Tiles (Reinforced Armor Bulkheads, Generators, Chemical Vats, Heavy Crates)
     for (let ty = 0; ty < ROOM_HEIGHT; ty++) {
       for (let tx = 0; tx < ROOM_WIDTH; tx++) {
@@ -1934,6 +1961,73 @@ export class GameEngine {
     return hasAliveGuards || hasAliveBoss;
   }
 
+  private resolvePlayerStuck() {
+    const room = this.dungeon.rooms.get(this.player.currentRoomId);
+    if (!room) return;
+
+    // 1. First attempt: push directly towards the room center
+    const centerX = room.bounds.worldX + (ROOM_WIDTH * TILE_SIZE) / 2;
+    const centerY = room.bounds.worldY + (ROOM_HEIGHT * TILE_SIZE) / 2;
+    const dirX = centerX - this.player.x;
+    const dirY = centerY - this.player.y;
+    const dist = Math.hypot(dirX, dirY);
+
+    if (dist > 0) {
+      const stepX = dirX / dist;
+      const stepY = dirY / dist;
+      for (let i = 1; i <= 36; i++) {
+        const testX = this.player.x + stepX * i * 3;
+        const testY = this.player.y + stepY * i * 3;
+        if (!this.checkWallCollision(testX, testY, 9)) {
+          this.player.x = testX;
+          this.player.y = testY;
+          return;
+        }
+      }
+    }
+
+    // 2. Fallback: radial search outward in 8 directions to find the nearest valid walkable tile
+    for (let r = 4; r <= 80; r += 4) {
+      for (let a = 0; a < 8; a++) {
+        const angle = (a / 8) * Math.PI * 2;
+        const testX = this.player.x + Math.cos(angle) * r;
+        const testY = this.player.y + Math.sin(angle) * r;
+        if (!this.checkWallCollision(testX, testY, 9)) {
+          this.player.x = testX;
+          this.player.y = testY;
+          return;
+        }
+      }
+    }
+  }
+
+  private ensurePlayerClearOfDoors(room: RoomInstance) {
+    const rx = room.bounds.worldX;
+    const ry = room.bounds.worldY;
+    const relX = this.player.x - rx;
+    const relY = this.player.y - ry;
+
+    // Clear West Door (DOOR_W: x=0, y=5)
+    if (room.doors.W && relX < TILE_SIZE * 2 && Math.abs(relY - (5 * TILE_SIZE + 24)) < TILE_SIZE * 1.5) {
+      this.player.x = rx + TILE_SIZE * 2 + 10;
+    }
+    // Clear East Door (DOOR_E: x=14, y=5)
+    if (room.doors.E && relX > (ROOM_WIDTH - 2) * TILE_SIZE && Math.abs(relY - (5 * TILE_SIZE + 24)) < TILE_SIZE * 1.5) {
+      this.player.x = rx + (ROOM_WIDTH - 2) * TILE_SIZE - 10;
+    }
+    // Clear North Door (DOOR_N: x=7, y=0)
+    if (room.doors.N && relY < TILE_SIZE * 2 && Math.abs(relX - (7 * TILE_SIZE + 24)) < TILE_SIZE * 1.5) {
+      this.player.y = ry + TILE_SIZE * 2 + 10;
+    }
+    // Clear South Door (DOOR_S: x=7, y=10)
+    if (room.doors.S && relY > (ROOM_HEIGHT - 2) * TILE_SIZE && Math.abs(relX - (7 * TILE_SIZE + 24)) < TILE_SIZE * 1.5) {
+      this.player.y = ry + (ROOM_HEIGHT - 2) * TILE_SIZE - 10;
+    }
+
+    // Resolve any remaining collision overlap
+    this.resolvePlayerStuck();
+  }
+
   private setRoomDoorsLocked(room: RoomInstance, locked: boolean) {
     const doorPositions: Record<Direction, { x: number; y: number }> = {
       N: DOOR_N,
@@ -1978,6 +2072,11 @@ export class GameEngine {
         }
       }
     }
+
+    // If closing doors, push the player safely forward away from all doors into the room interior
+    if (locked) {
+      this.ensurePlayerClearOfDoors(room);
+    }
   }
 
   private spawnDoorParticles(room: RoomInstance, color: string) {
@@ -2009,15 +2108,21 @@ export class GameEngine {
 
     const hasHostiles = this.isRoomHostile(currentRoom);
 
-    // Check if player has stepped inside room bounds (past the threshold entrance)
+    // Player must be clearly past the door threshold into the room interior (at least 1.7 tiles in)
     const relX = this.player.x - currentRoom.bounds.worldX;
     const relY = this.player.y - currentRoom.bounds.worldY;
-    const pTx = Math.floor(relX / TILE_SIZE);
-    const pTy = Math.floor(relY / TILE_SIZE);
-    const isInsideRoom = pTx >= 1 && pTx <= ROOM_WIDTH - 2 && pTy >= 1 && pTy <= ROOM_HEIGHT - 2;
+    const minSafeDist = TILE_SIZE * 1.7; // ~81px from room boundaries
+    const maxSafeDistX = currentRoom.bounds.width - minSafeDist;
+    const maxSafeDistY = currentRoom.bounds.height - minSafeDist;
 
-    // 1. TRIGGER LOCKDOWN: Player enters hostile room with alive enemies
-    if (!currentRoom.isCleared && hasHostiles && !currentRoom.isLockedDown && isInsideRoom) {
+    const isSafelyInsideRoom =
+      relX >= minSafeDist &&
+      relX <= maxSafeDistX &&
+      relY >= minSafeDist &&
+      relY <= maxSafeDistY;
+
+    // 1. TRIGGER LOCKDOWN: Player enters hostile room with alive enemies and is safely inside
+    if (!currentRoom.isCleared && hasHostiles && !currentRoom.isLockedDown && isSafelyInsideRoom) {
       currentRoom.isLockedDown = true;
       this.setRoomDoorsLocked(currentRoom, true);
       sound.playDoorLock();

@@ -2,6 +2,7 @@ import React from 'react';
 import { PlayerState, DungeonFloor, RoomInstance } from '../types';
 import { Map, RefreshCw, Volume2, VolumeX, Route, Trophy, Save, Crosshair, Zap, Flame } from 'lucide-react';
 import { getWeaponDef } from '../game/weapons';
+import { InfiltrationLogo } from './InfiltrationLogo';
 
 interface HUDProps {
   player: PlayerState;
@@ -98,7 +99,7 @@ export const HUD: React.FC<HUDProps> = ({
                     : 'border-dashed border-stone-800 opacity-40 hover:opacity-60 scale-95'
                 }`}
                 style={{ borderColor: activeSlot === 2 && wDef2 ? wDef2.color : wDef2 ? '#44403c' : '#292524' }}
-                title={wDef2 ? `[2] ${wDef2.name} (Presiona tecla 2)` : 'Ranura 2 vacía. Recoge un arma del suelo con [E]'}
+                title={wDef2 ? `[2] ${wDef2.name} (Presiona tecla 2)` : 'Ranura 2 vacía. Recoge un arma del suelo con [F]'}
               >
                 {wDef2 ? (
                   <>
@@ -217,6 +218,19 @@ export const HUD: React.FC<HUDProps> = ({
           </div>
         </div>
 
+        {/* Top Center: Infiltration Tactical Insignia */}
+        <div className="hidden sm:flex items-center gap-2 bg-black/90 border border-red-900/60 px-2.5 py-1 rounded-md shadow-lg shadow-red-950/40 pointer-events-auto backdrop-blur-sm">
+          <InfiltrationLogo size="xs" withGlow={true} />
+          <div className="flex flex-col text-left">
+            <span className="text-[9px] text-white font-black tracking-widest font-mono leading-none">
+              INFILTRATION
+            </span>
+            <span className="text-[7px] text-red-500 font-mono tracking-tighter leading-none mt-0.5">
+              ROGUE 077
+            </span>
+          </div>
+        </div>
+
         {/* Top Right: Retro Tactical Tools */}
         <div className="flex items-center gap-2 pointer-events-auto">
           {onSaveGame && (
@@ -311,10 +325,13 @@ export const HUD: React.FC<HUDProps> = ({
           <span>DISPARAR</span>
           <span className="text-stone-600">•</span>
           <span className="text-cyan-400 font-bold">1 / 2</span>
-          <span>CAMBIAR ARMA</span>
+          <span>CAMBIAR</span>
           <span className="text-stone-600">•</span>
-          <span className="text-yellow-400 font-bold">E</span>
-          <span>SUSTITUIR</span>
+          <span className="text-amber-300 font-bold">F</span>
+          <span>ARMA</span>
+          <span className="text-stone-600">•</span>
+          <span className="text-emerald-400 font-bold">E</span>
+          <span>CONSOLA</span>
         </div>
 
         {/* Floor Level */}

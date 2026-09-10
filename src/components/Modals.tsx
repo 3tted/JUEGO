@@ -1,6 +1,7 @@
 import React from 'react';
 import { DungeonFloor } from '../types';
 import { ArrowRight, RefreshCw, Skull, Trophy, CheckCircle, Shield, Award, Terminal } from 'lucide-react';
+import { InfiltrationLogo } from './InfiltrationLogo';
 
 interface LevelCompletedModalProps {
   floor: DungeonFloor;
@@ -18,8 +19,8 @@ export const LevelCompletedModal: React.FC<LevelCompletedModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 select-none animate-in fade-in duration-300">
       <div className="w-full max-w-md bg-slate-900 border border-emerald-500/50 rounded-xl p-6 shadow-2xl text-center font-mono">
-        <div className="mx-auto w-14 h-14 bg-emerald-950/60 border border-emerald-500/60 rounded-full flex items-center justify-center text-emerald-400 mb-4 shadow-lg shadow-emerald-950/50">
-          <Trophy className="w-7 h-7" />
+        <div className="mx-auto mb-3 flex justify-center">
+          <InfiltrationLogo size="lg" withGlow={true} />
         </div>
 
         <h2 className="text-xl font-bold text-white tracking-wider mb-1">
@@ -80,8 +81,8 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({ onRetry, onOpenLea
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 select-none animate-in fade-in duration-300">
       <div className="w-full max-w-md bg-slate-900 border border-rose-500/50 rounded-xl p-6 shadow-2xl text-center font-mono">
-        <div className="mx-auto w-14 h-14 bg-rose-950/60 border border-rose-500/60 rounded-full flex items-center justify-center text-rose-400 mb-4 shadow-lg shadow-rose-950/50">
-          <Skull className="w-7 h-7" />
+        <div className="mx-auto mb-3 flex justify-center">
+          <InfiltrationLogo size="lg" withGlow={true} />
         </div>
 
         <h2 className="text-xl font-bold text-white tracking-wider mb-1">
@@ -127,9 +128,12 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({ onClose })
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 select-none animate-in fade-in duration-200">
       <div className="w-full max-w-lg bg-slate-900 border border-cyan-500/40 rounded-xl p-6 shadow-2xl font-mono text-xs">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-          <div className="flex items-center gap-2 text-cyan-400">
-            <Terminal className="w-5 h-5" />
-            <h3 className="font-bold text-sm text-white tracking-wider">MANUAL DE OPERACIONES // AGENTE 077</h3>
+          <div className="flex items-center gap-3">
+            <InfiltrationLogo size="sm" withGlow={true} />
+            <div>
+              <h3 className="font-bold text-sm text-white tracking-wider">MANUAL DE OPERACIONES // AGENTE 077</h3>
+              <p className="text-[10px] text-red-400 tracking-widest font-mono">INFILTRATION TACTICAL SYSTEM</p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -156,7 +160,7 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({ onClose })
             <div className="mt-1 space-y-0.5 text-slate-300">
               <div>• <strong className="text-cyan-400">Joystick Izquierdo (Azul)</strong>: Desliza para moverte en 360°.</div>
               <div>• <strong className="text-rose-400">Joystick Derecho (Rojo)</strong>: Arrastra para apuntar y disparar ráfagas en 360°.</div>
-              <div>• Botones táctiles para <strong>Dash</strong>, <strong>Recargar</strong>, <strong>[E] Acción</strong> y <strong>Cambiar Arma</strong>.</div>
+              <div>• Botones táctiles independientes: <strong>Dash</strong>, <strong>Recargar</strong>, <strong>[E] Terminal</strong>, <strong>[F] Arma</strong> y <strong>Cambiar Arma</strong>.</div>
             </div>
           </div>
           <div className="p-2.5 bg-slate-950 rounded border border-slate-800 flex items-center justify-between">
@@ -164,8 +168,8 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({ onClose })
             <span className="text-cyan-300">[ESPACIO]</span>
           </div>
           <div className="p-2.5 bg-slate-950 rounded border border-slate-800 flex items-center justify-between">
-            <span className="text-slate-400 font-bold">INTERACTUAR / HACKEAR:</span>
-            <span className="text-cyan-300">[E] cerca de terminales</span>
+            <span className="text-slate-400 font-bold">INTERACTUAR / HACKEAR CONSOLA / ASCENSOR:</span>
+            <span className="text-cyan-300">[E]</span>
           </div>
           <div className="p-2.5 bg-slate-950 rounded border border-slate-800 flex items-center justify-between">
             <span className="text-slate-400 font-bold">PLANO TÁCTICO PROCEDIMENTAL:</span>
@@ -183,9 +187,9 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({ onClose })
             <span className="text-amber-400 font-bold">CAMBIAR ARMA (MÁX 2):</span>
             <span className="text-white font-mono">TECLAS [1] y [2]</span>
           </div>
-          <div className="p-2.5 bg-slate-950 rounded border border-emerald-500/30 flex items-center justify-between">
-            <span className="text-emerald-400 font-bold">SUSTITUIR / RECOGER ARMA:</span>
-            <span className="text-white font-mono">TECLA [E] junto al arma</span>
+          <div className="p-2.5 bg-slate-950 rounded border border-amber-500/40 flex items-center justify-between">
+            <span className="text-amber-300 font-bold">RECOGER / SUSTITUIR ARMA:</span>
+            <span className="text-amber-300 font-mono font-bold">TECLA [F] junto al arma</span>
           </div>
           <div className="p-2.5 bg-slate-950 rounded border border-slate-800 flex items-center justify-between">
             <span className="text-slate-400 font-bold">LANZAR EXPLOSIVOS:</span>

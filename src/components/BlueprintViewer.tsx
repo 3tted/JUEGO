@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DungeonFloor, RoomInstance, RoomType } from '../types';
 import { Shield, Eye, Cpu, Crosshair, Skull, CheckCircle2, RefreshCw, X, Compass, Zap, MapPin, Route } from 'lucide-react';
+import { InfiltrationLogo } from './InfiltrationLogo';
 
 interface BlueprintViewerProps {
   dungeon: DungeonFloor;
@@ -72,9 +73,7 @@ export const BlueprintViewer: React.FC<BlueprintViewerProps> = ({
         {/* Header - Tactical Blueprint Style */}
         <div className="px-6 py-4 bg-slate-950/90 border-b border-cyan-500/30 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-cyan-950/80 border border-cyan-500/50 rounded-lg text-cyan-400">
-              <Route className="w-5 h-5" />
-            </div>
+            <InfiltrationLogo size="sm" withGlow={true} />
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold tracking-wider text-cyan-100 font-mono">
