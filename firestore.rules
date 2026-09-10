@@ -96,8 +96,8 @@ service cloud.firestore {
 
     // Collection: /leaderboard/{runId}
     match /leaderboard/{runId} {
-      allow get: if isValidId(runId);
-      allow list: if request.query.limit <= 50;
+      allow get: if isSignedIn() && isValidId(runId);
+      allow list: if isSignedIn() && request.query.limit <= 50;
 
       allow create: if isSignedIn() &&
                        isValidId(runId) &&

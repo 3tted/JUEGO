@@ -408,6 +408,16 @@ const FrequencyLockGame: React.FC<{
   const [resonance, setResonance] = useState<number>(0);
   const [lockProgress, setLockProgress] = useState<number>(0);
 
+  // Audio throttling ref to prevent audio thread lockup when dragging sliders
+  const lastToneTimeRef = useRef<number>(0);
+  const playThrottledTone = useCallback((freq: number, duration: number = 0.03) => {
+    const now = performance.now();
+    if (now - lastToneTimeRef.current >= 75) {
+      lastToneTimeRef.current = now;
+      sound.playTone(freq, duration);
+    }
+  }, []);
+
   // Victory trigger handler outside of setState
   const handleConfirmLock = useCallback(() => {
     if (hasWonRef.current || isHacked) return;
@@ -465,7 +475,7 @@ const FrequencyLockGame: React.FC<{
           const increment = resonance >= 88 ? 35 : 22;
           const next = Math.min(100, prev + increment);
           if (next < 100) {
-            sound.playTone(320 + next * 5, 0.05);
+            playThrottledTone(320 + next * 5, 0.05);
           }
           return next;
         });
@@ -474,7 +484,7 @@ const FrequencyLockGame: React.FC<{
       }
     }, 110);
     return () => clearInterval(interval);
-  }, [resonance, isHacked]);
+  }, [resonance, isHacked, playThrottledTone]);
 
   // Watch lockProgress reaching 100% to trigger victory cleanly
   useEffect(() => {
@@ -495,7 +505,30 @@ const FrequencyLockGame: React.FC<{
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [resonance, handleConfirmLock]);
 
-  // Oscilloscope Canvas Rendering
+  // Current parameters ref so the animation loop runs continuously without resetting t
+  const paramsRef = useRef({
+    targetFreq,
+    targetAmp,
+    targetPhase,
+    userFreq,
+    userAmp,
+    userPhase,
+    resonance,
+  });
+
+  useEffect(() => {
+    paramsRef.current = {
+      targetFreq,
+      targetAmp,
+      targetPhase,
+      userFreq,
+      userAmp,
+      userPhase,
+      resonance,
+    };
+  }, [targetFreq, targetAmp, targetPhase, userFreq, userAmp, userPhase, resonance]);
+
+  // Oscilloscope Canvas Rendering - Continuous 60fps loop that NEVER restarts or jumps
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -504,9 +537,23 @@ const FrequencyLockGame: React.FC<{
 
     let animId: number;
     let t = 0;
+    let lastTimestamp = performance.now();
 
-    const render = () => {
-      t += 0.035;
+    const render = (timestamp: number) => {
+      const dt = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
+      lastTimestamp = timestamp;
+      t += dt * 2.5;
+
+      const {
+        targetFreq: curTargetFreq,
+        targetAmp: curTargetAmp,
+        targetPhase: curTargetPhase,
+        userFreq: curUserFreq,
+        userAmp: curUserAmp,
+        userPhase: curUserPhase,
+        resonance: curResonance,
+      } = paramsRef.current;
+
       ctx.fillStyle = '#030d14';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -535,27 +582,27 @@ const FrequencyLockGame: React.FC<{
 
       const midY = canvas.height / 2;
 
-      // 1. Target Signal (Amber Phosphor)
+      // 1. Target Signal (Amber Phosphor) - completely smooth and continuous!
       ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 2;
       ctx.beginPath();
       for (let x = 0; x < canvas.width; x++) {
-        const rad = (x * targetFreq * 0.05 + t * 4 + (targetPhase * Math.PI) / 180);
-        const y = midY + Math.sin(rad) * targetAmp;
+        const rad = x * curTargetFreq * 0.05 + t * 4 + (curTargetPhase * Math.PI) / 180;
+        const y = midY + Math.sin(rad) * curTargetAmp;
         if (x === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
       ctx.stroke();
 
       // 2. User Tuned Signal (Cyan / Green Laser)
-      ctx.strokeStyle = resonance >= 80 ? '#22c55e' : '#38bdf8';
+      ctx.strokeStyle = curResonance >= 80 ? '#22c55e' : '#38bdf8';
       ctx.lineWidth = 2.5;
-      ctx.shadowColor = resonance >= 80 ? '#4ade80' : '#38bdf8';
+      ctx.shadowColor = curResonance >= 80 ? '#4ade80' : '#38bdf8';
       ctx.shadowBlur = 8;
       ctx.beginPath();
       for (let x = 0; x < canvas.width; x++) {
-        const rad = (x * userFreq * 0.05 + t * 4 + (userPhase * Math.PI) / 180);
-        const y = midY + Math.sin(rad) * userAmp;
+        const rad = x * curUserFreq * 0.05 + t * 4 + (curUserPhase * Math.PI) / 180;
+        const y = midY + Math.sin(rad) * curUserAmp;
         if (x === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
@@ -565,9 +612,9 @@ const FrequencyLockGame: React.FC<{
       animId = requestAnimationFrame(render);
     };
 
-    render();
+    animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [targetFreq, targetAmp, targetPhase, userFreq, userAmp, userPhase, resonance]);
+  }, []);
 
   return (
     <div className="flex flex-col items-center w-full max-w-lg">
@@ -672,21 +719,33 @@ const FrequencyLockGame: React.FC<{
             onChange={(e) => {
               const val = parseFloat(e.target.value);
               setUserFreq(val);
-              sound.playTone(val * 160, 0.04);
+              playThrottledTone(val * 160, 0.03);
             }}
             className="accent-cyan-400 cursor-pointer h-1.5 bg-cyan-950 rounded disabled:opacity-50"
           />
           <div className="flex justify-between text-[7px] text-cyan-600">
             <button
               disabled={isHacked}
-              onClick={() => setUserFreq((f) => Math.max(0.8, Number((f - 0.1).toFixed(1))))}
+              onClick={() => {
+                setUserFreq((f) => {
+                  const next = Math.max(0.8, Number((f - 0.1).toFixed(1)));
+                  playThrottledTone(next * 160, 0.03);
+                  return next;
+                });
+              }}
               className="px-1.5 py-0.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 rounded border border-cyan-800 cursor-pointer disabled:opacity-50"
             >
               -0.1
             </button>
             <button
               disabled={isHacked}
-              onClick={() => setUserFreq((f) => Math.min(4.5, Number((f + 0.1).toFixed(1))))}
+              onClick={() => {
+                setUserFreq((f) => {
+                  const next = Math.min(4.5, Number((f + 0.1).toFixed(1)));
+                  playThrottledTone(next * 160, 0.03);
+                  return next;
+                });
+              }}
               className="px-1.5 py-0.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 rounded border border-cyan-800 cursor-pointer disabled:opacity-50"
             >
               +0.1
@@ -710,21 +769,33 @@ const FrequencyLockGame: React.FC<{
             onChange={(e) => {
               const val = parseInt(e.target.value, 10);
               setUserAmp(val);
-              sound.playTone(200 + val * 3, 0.03);
+              playThrottledTone(200 + val * 3, 0.03);
             }}
             className="accent-cyan-400 cursor-pointer h-1.5 bg-cyan-950 rounded disabled:opacity-50"
           />
           <div className="flex justify-between text-[7px] text-cyan-600">
             <button
               disabled={isHacked}
-              onClick={() => setUserAmp((a) => Math.max(10, a - 2))}
+              onClick={() => {
+                setUserAmp((a) => {
+                  const next = Math.max(10, a - 2);
+                  playThrottledTone(200 + next * 3, 0.03);
+                  return next;
+                });
+              }}
               className="px-1.5 py-0.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 rounded border border-cyan-800 cursor-pointer disabled:opacity-50"
             >
               -2
             </button>
             <button
               disabled={isHacked}
-              onClick={() => setUserAmp((a) => Math.min(70, a + 2))}
+              onClick={() => {
+                setUserAmp((a) => {
+                  const next = Math.min(70, a + 2);
+                  playThrottledTone(200 + next * 3, 0.03);
+                  return next;
+                });
+              }}
               className="px-1.5 py-0.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 rounded border border-cyan-800 cursor-pointer disabled:opacity-50"
             >
               +2
@@ -748,21 +819,33 @@ const FrequencyLockGame: React.FC<{
             onChange={(e) => {
               const val = parseInt(e.target.value, 10);
               setUserPhase(val);
-              sound.playTone(320 + (val / 360) * 120, 0.03);
+              playThrottledTone(320 + (val / 360) * 120, 0.03);
             }}
             className="accent-cyan-400 cursor-pointer h-1.5 bg-cyan-950 rounded disabled:opacity-50"
           />
           <div className="flex justify-between text-[7px] text-cyan-600">
             <button
               disabled={isHacked}
-              onClick={() => setUserPhase((p) => (p - 10 + 360) % 360)}
+              onClick={() => {
+                setUserPhase((p) => {
+                  const next = (p - 10 + 360) % 360;
+                  playThrottledTone(320 + (next / 360) * 120, 0.03);
+                  return next;
+                });
+              }}
               className="px-1.5 py-0.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 rounded border border-cyan-800 cursor-pointer disabled:opacity-50"
             >
               -10°
             </button>
             <button
               disabled={isHacked}
-              onClick={() => setUserPhase((p) => (p + 10) % 360)}
+              onClick={() => {
+                setUserPhase((p) => {
+                  const next = (p + 10) % 360;
+                  playThrottledTone(320 + (next / 360) * 120, 0.03);
+                  return next;
+                });
+              }}
               className="px-1.5 py-0.5 bg-cyan-950 hover:bg-cyan-900 text-cyan-300 rounded border border-cyan-800 cursor-pointer disabled:opacity-50"
             >
               +10°

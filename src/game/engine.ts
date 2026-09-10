@@ -277,8 +277,19 @@ export class GameEngine {
     startRoom.hasBeenRevealed = true;
 
     if (typeof window !== 'undefined') {
-      this.logoImage = new Image();
-      this.logoImage.src = '/assets/infiltration-logo.svg';
+      const logo = new Image();
+      logo.onload = () => {
+        if (logo.naturalWidth > 0 && logo.naturalHeight > 0) {
+          this.logoImage = logo;
+        }
+      };
+      logo.onerror = () => {
+        const fallback = new Image();
+        fallback.src = '/assets/infiltration-logo.svg';
+        this.logoImage = fallback;
+      };
+      logo.src = '/assets/infiltration-logo.png';
+      this.logoImage = logo;
     }
 
     this.initEvents();
@@ -1725,20 +1736,30 @@ export class GameEngine {
     }
 
     // Infiltration Floor Insignia Stencil in START room and BOSS room
-    if ((room.type === 'START' || room.type === 'BOSS') && this.logoImage && this.logoImage.complete) {
-      const centerX = rb.worldX + rb.width / 2;
-      const centerY = rb.worldY + rb.height / 2;
-      const logoSize = room.type === 'BOSS' ? 140 : 120;
-      ctx.save();
-      ctx.globalAlpha = room.type === 'BOSS' ? 0.35 : 0.45;
-      ctx.drawImage(
-        this.logoImage,
-        centerX - logoSize / 2,
-        centerY - logoSize / 2,
-        logoSize,
-        logoSize
-      );
-      ctx.restore();
+    if (
+      (room.type === 'START' || room.type === 'BOSS') &&
+      this.logoImage &&
+      this.logoImage.complete &&
+      this.logoImage.naturalWidth > 0 &&
+      this.logoImage.naturalHeight > 0
+    ) {
+      try {
+        const centerX = rb.worldX + rb.width / 2;
+        const centerY = rb.worldY + rb.height / 2;
+        const logoSize = room.type === 'BOSS' ? 140 : 120;
+        ctx.save();
+        ctx.globalAlpha = room.type === 'BOSS' ? 0.35 : 0.45;
+        ctx.drawImage(
+          this.logoImage,
+          centerX - logoSize / 2,
+          centerY - logoSize / 2,
+          logoSize,
+          logoSize
+        );
+        ctx.restore();
+      } catch (e) {
+        // Suppress canvas broken image state error
+      }
     }
 
     // B. Tiles (Reinforced Armor Bulkheads, Generators, Chemical Vats, Heavy Crates)

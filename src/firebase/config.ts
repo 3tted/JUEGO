@@ -9,7 +9,19 @@ import {
   signOut,
 } from 'firebase/auth';
 import { doc, getDocFromServer, initializeFirestore } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import rawConfig from '../../firebase-applet-config.json';
+
+// Read configuration from environment variables (.env)
+export const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || rawConfig.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || rawConfig.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || rawConfig.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || rawConfig.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || rawConfig.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || rawConfig.appId,
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || rawConfig.firestoreDatabaseId,
+  oAuthClientId: import.meta.env.VITE_FIREBASE_OAUTH_CLIENT_ID || rawConfig.oAuthClientId,
+};
 
 const app = initializeApp(firebaseConfig);
 

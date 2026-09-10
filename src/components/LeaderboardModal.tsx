@@ -73,6 +73,12 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
+    if (!user) {
+      setLoadingEntries(false);
+      setLoadingUsers(false);
+      return;
+    }
+
     setLoadingEntries(true);
     const unsubscribeLeaderboard = subscribeToLeaderboard((data) => {
       setEntries(data);
@@ -89,30 +95,66 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
       unsubscribeLeaderboard();
       unsubscribeProfiles();
     };
-  }, [isOpen]);
+  }, [isOpen, user]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
     setSaveActionMessage(null);
 
-    if (!email.trim()) {
-      setAuthError('Por favor ingresa un correo electrónico.');
+    // 1. Sanitización de entradas (recorte de espacios en blanco)
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    const trimmedDisplayName = displayName.trim();
+
+    // 2. Validación de campos obligatorios (no vacíos ni solo espacios)
+    if (!trimmedEmail) {
+      setAuthError('El correo electrónico es obligatorio y no puede estar vacío.');
       return;
     }
-    if (!password || password.length < 6) {
+
+    if (!trimmedPassword) {
+      setAuthError('La contraseña es obligatoria y no puede estar vacía.');
+      return;
+    }
+
+    // 3. Validación de estructura de correo electrónico
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      setAuthError('El correo ingresado no tiene un formato válido (ejemplo: agente@complejo.net).');
+      return;
+    }
+
+    // 4. Validación de longitud mínima de contraseña
+    if (trimmedPassword.length < 6) {
       setAuthError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    // 5. Validación de longitud máxima (ningún campo puede recibir texto excesivamente largo)
+    if (trimmedEmail.length > 80) {
+      setAuthError('El correo electrónico es demasiado largo (máximo 80 caracteres permitidos).');
+      return;
+    }
+
+    if (password.length > 64) {
+      setAuthError('La contraseña es demasiado larga (máximo 64 caracteres permitidos).');
+      return;
+    }
+
+    if (authMode === 'register' && trimmedDisplayName.length > 30) {
+      setAuthError('El alias o nombre de agente es demasiado largo (máximo 30 caracteres permitidos).');
       return;
     }
 
     setAuthLoading(true);
     try {
       if (authMode === 'login') {
-        await loginWithEmail(email, password);
+        await loginWithEmail(trimmedEmail, trimmedPassword);
         setSaveActionMessage('¡Sesión iniciada con éxito! Registro sincronizado con la base de datos.');
       } else {
-        await registerWithEmail(email, password, displayName, faction);
-        setSaveActionMessage('¡Registro guardado en la base de datos Firestore! (Campos opcionales procesados correctamente)');
+        await registerWithEmail(trimmedEmail, trimmedPassword, trimmedDisplayName || undefined);
+        setSaveActionMessage('¡Registro guardado en la base de datos Firestore! (Campos procesados correctamente)');
         setActiveTab('registros');
       }
       setEmail('');
@@ -310,43 +352,24 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   onKeyUp={(e) => e.stopPropagation()}
                 >
                   {authMode === 'register' && (
-                    <>
-                      <div className="flex items-center bg-[#100d0b] border border-[#3d322a] px-2 py-1.5 focus-within:border-[#e2b044] cursor-text">
-                        <UserIcon className="w-3.5 h-3.5 text-[#8c786a] mr-2 shrink-0" />
-                        <input
-                          id="auth-display-name-input"
-                          name="displayName"
-                          type="text"
-                          placeholder="Nombre o Alias de Agente (opcional)"
-                          value={displayName}
-                          onChange={(e) => setDisplayName(e.target.value)}
-                          onKeyDown={(e) => e.stopPropagation()}
-                          onKeyUp={(e) => e.stopPropagation()}
-                          className="bg-transparent text-[8px] text-[#f4ecd8] outline-none w-full placeholder:text-[#6e5d52] select-text cursor-text"
-                        />
-                        <span className="text-[7px] text-[#8c786a] uppercase ml-1 shrink-0 bg-[#1e1713] px-1.5 py-0.5 rounded border border-[#3d322a] select-none pointer-events-none">
-                          Opcional
-                        </span>
-                      </div>
-
-                      <div className="flex items-center bg-[#100d0b] border border-[#3d322a] px-2 py-1.5 focus-within:border-[#e2b044] cursor-text">
-                        <Shield className="w-3.5 h-3.5 text-[#8c786a] mr-2 shrink-0" />
-                        <input
-                          id="auth-faction-input"
-                          name="faction"
-                          type="text"
-                          placeholder="Facción / Escuadrón (opcional)"
-                          value={faction}
-                          onChange={(e) => setFaction(e.target.value)}
-                          onKeyDown={(e) => e.stopPropagation()}
-                          onKeyUp={(e) => e.stopPropagation()}
-                          className="bg-transparent text-[8px] text-[#f4ecd8] outline-none w-full placeholder:text-[#6e5d52] select-text cursor-text"
-                        />
-                        <span className="text-[7px] text-[#8c786a] uppercase ml-1 shrink-0 bg-[#1e1713] px-1.5 py-0.5 rounded border border-[#3d322a] select-none pointer-events-none">
-                          Opcional
-                        </span>
-                      </div>
-                    </>
+                    <div className="flex items-center bg-[#100d0b] border border-[#3d322a] px-2 py-1.5 focus-within:border-[#e2b044] cursor-text">
+                      <UserIcon className="w-3.5 h-3.5 text-[#8c786a] mr-2 shrink-0" />
+                      <input
+                        id="auth-display-name-input"
+                        name="displayName"
+                        type="text"
+                        maxLength={30}
+                        placeholder="Nombre o Alias de Agente (opcional, máx 30)"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        onKeyUp={(e) => e.stopPropagation()}
+                        className="bg-transparent text-[8px] text-[#f4ecd8] outline-none w-full placeholder:text-[#6e5d52] select-text cursor-text"
+                      />
+                      <span className="text-[7px] text-[#8c786a] uppercase ml-1 shrink-0 bg-[#1e1713] px-1.5 py-0.5 rounded border border-[#3d322a] select-none pointer-events-none">
+                        Máx 30
+                      </span>
+                    </div>
                   )}
 
                   <div className="flex items-center bg-[#100d0b] border border-[#3d322a] px-2 py-1.5 focus-within:border-[#e2b044] cursor-text">
@@ -356,13 +379,17 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       name="email"
                       type="email"
                       required
-                      placeholder="agente@complejo.net (obligatorio)"
+                      maxLength={80}
+                      placeholder="agente@complejo.net (obligatorio, máx 80)"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       onKeyDown={(e) => e.stopPropagation()}
                       onKeyUp={(e) => e.stopPropagation()}
                       className="bg-transparent text-[8px] text-[#f4ecd8] outline-none w-full placeholder:text-[#6e5d52] select-text cursor-text"
                     />
+                    <span className="text-[7px] text-[#8c786a] uppercase ml-1 shrink-0 bg-[#1e1713] px-1.5 py-0.5 rounded border border-[#3d322a] select-none pointer-events-none">
+                      Requerido
+                    </span>
                   </div>
 
                   <div className="flex items-center bg-[#100d0b] border border-[#3d322a] px-2 py-1.5 focus-within:border-[#e2b044] cursor-text">
@@ -372,13 +399,31 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       name="password"
                       type="password"
                       required
-                      placeholder="Contraseña mínimo 6 caracteres (obligatorio)"
+                      maxLength={64}
+                      placeholder="Contraseña 6 a 64 caracteres (obligatorio)"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       onKeyDown={(e) => e.stopPropagation()}
                       onKeyUp={(e) => e.stopPropagation()}
                       className="bg-transparent text-[8px] text-[#f4ecd8] outline-none w-full placeholder:text-[#6e5d52] select-text cursor-text"
                     />
+                    <span className="text-[7px] text-[#8c786a] uppercase ml-1 shrink-0 bg-[#1e1713] px-1.5 py-0.5 rounded border border-[#3d322a] select-none pointer-events-none">
+                      Mín 6
+                    </span>
+                  </div>
+
+                  {/* Aviso de Privacidad y Protección de Datos */}
+                  <div className="mt-1 bg-[#120f0d] border border-[#2a221d] rounded p-2 text-[7px] text-[#a89587] flex flex-col gap-1 leading-normal select-text">
+                    <div className="flex items-center gap-1 font-bold text-[#e2b044]">
+                      <Shield className="w-3 h-3 text-[#e2b044] shrink-0" />
+                      <span>AVISO DE PRIVACIDAD Y PROTECCIÓN DE DATOS</span>
+                    </div>
+                    <p>
+                      • <strong className="text-[#f4ecd8]">Correo y Contraseña:</strong> Se usan exclusivamente para gestionar tu sesión y proteger tus partidas guardadas mediante Firebase Authentication (cifrada con hash, nunca en texto plano).
+                    </p>
+                    <p>
+                      • <strong className="text-[#f4ecd8]">Nombre o Alias:</strong> Si lo proporcionas, se publica en la tabla de clasificación global para identificar tus récords.
+                    </p>
                   </div>
 
                   {authError && authError === 'auth/operation-not-allowed' ? (

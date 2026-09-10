@@ -15,6 +15,19 @@ export const InfiltrationLogo: React.FC<InfiltrationLogoProps> = ({
   withGlow = true,
   animated = false,
 }) => {
+  const [logoSrc, setLogoSrc] = React.useState<string>('/assets/infiltration-logo.png');
+
+  React.useEffect(() => {
+    // Check if user has uploaded a custom infiltration-logo.png
+    const testPng = new Image();
+    testPng.onload = () => {
+      if (testPng.naturalWidth > 0 && testPng.naturalHeight > 0) {
+        setLogoSrc('/assets/infiltration-logo.png');
+      }
+    };
+    testPng.src = '/assets/infiltration-logo.png';
+  }, []);
+
   const sizeClasses = {
     xs: 'w-6 h-6',
     sm: 'w-10 h-10',
@@ -36,7 +49,12 @@ export const InfiltrationLogo: React.FC<InfiltrationLogoProps> = ({
         } ${animated ? 'transition-transform duration-300 hover:scale-105' : ''}`}
       >
         <img
-          src="/assets/infiltration-logo.svg"
+          src={logoSrc}
+          onError={() => {
+            if (logoSrc !== '/assets/infiltration-logo.svg') {
+              setLogoSrc('/assets/infiltration-logo.svg');
+            }
+          }}
           alt="Infiltration Tactical Logo"
           referrerPolicy="no-referrer"
           className="w-full h-full object-contain filter drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]"
