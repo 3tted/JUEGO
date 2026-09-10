@@ -1180,7 +1180,7 @@ export function drawWeaponPickup(
   const tagY = -22 + bob;
   ctx.font = 'bold 7px monospace';
   ctx.textAlign = 'center';
-  const displayTitle = isNearby ? `[PISAR] ${badgeText}` : badgeText;
+  const displayTitle = isNearby ? `[E] SUSTITUIR: ${badgeText}` : badgeText;
   const tw = ctx.measureText(displayTitle).width;
 
   ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';

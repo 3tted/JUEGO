@@ -19,6 +19,7 @@ interface HUDProps {
   isSaving?: boolean;
   hasSavedGame?: boolean;
   interactionPrompt?: string | null;
+  onSwitchWeaponSlot?: (slot: 1 | 2) => void;
 }
 
 export const HUD: React.FC<HUDProps> = ({
@@ -35,11 +36,18 @@ export const HUD: React.FC<HUDProps> = ({
   onSaveGame,
   isSaving = false,
   hasSavedGame = false,
+  onSwitchWeaponSlot,
 }) => {
   const currentHealth = Math.round(player.health);
   const maxHealth = player.maxHealth || 8;
   const hpRatio = Math.max(0, Math.min(1, currentHealth / maxHealth));
-  const currentWeaponDef = getWeaponDef(player.currentWeapon || 'pistol');
+  
+  const w1 = player.weapons ? player.weapons[0] : (player.currentWeapon || 'pistol');
+  const w2 = player.weapons ? player.weapons[1] : null;
+  const wDef1 = getWeaponDef(w1 || 'pistol');
+  const wDef2 = w2 ? getWeaponDef(w2) : null;
+  const activeSlot = player.activeWeaponSlot || 1;
+  const currentWeaponDef = activeSlot === 2 && wDef2 ? wDef2 : wDef1;
 
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-3 sm:p-5 select-none font-['Press_Start_2P',monospace]">
@@ -47,42 +55,76 @@ export const HUD: React.FC<HUDProps> = ({
       <div className="flex items-start justify-between">
         {/* EXACT NUCLEAR THRONE HUD (Top Left from Screenshot) */}
         <div className="flex flex-col gap-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-          {/* Row 1: Weapon Box + Health Bar */}
-          <div className="flex items-stretch gap-1">
-            {/* Weapon Box with Weapon Type indicator & Slot Number */}
-            <div
-              className="w-12 h-14 bg-black border-2 rounded-t-md flex flex-col items-center justify-between p-1 transition-colors"
-              style={{ borderColor: currentWeaponDef.color }}
-              title={`Arma: ${currentWeaponDef.name}`}
-            >
-              {/* Ammo/energy indicators matching weapon tech */}
-              <div className="flex gap-1 justify-center pt-0.5">
-                <div
-                  className="w-1.5 h-3 border border-black rounded-t-sm"
-                  style={{ backgroundColor: currentWeaponDef.color }}
-                />
-                <div
-                  className="w-1.5 h-3 border border-black rounded-t-sm"
-                  style={{ backgroundColor: currentWeaponDef.color }}
-                />
-                <div
-                  className="w-1.5 h-3 border border-black rounded-t-sm"
-                  style={{ backgroundColor: currentWeaponDef.color }}
-                />
-              </div>
-              {/* Bold slot number or weapon code */}
-              <span
-                className="text-xl font-bold tracking-tight pb-0.5"
-                style={{ color: currentWeaponDef.color }}
+          {/* Row 1: Dual Weapon Boxes + Health Bar */}
+          <div className="flex items-stretch gap-1.5">
+            {/* 2 Weapon Slots (Slot 1 & Slot 2) */}
+            <div className="flex items-center gap-1">
+              {/* Slot 1 Box */}
+              <button
+                type="button"
+                onClick={() => onSwitchWeaponSlot?.(1)}
+                className={`w-11 h-14 bg-black border-2 rounded-t-md flex flex-col items-center justify-between p-1 transition-all pointer-events-auto cursor-pointer ${
+                  activeSlot === 1
+                    ? 'shadow-[0_0_10px_rgba(255,255,255,0.35)] scale-100'
+                    : 'border-stone-700 opacity-60 hover:opacity-90 hover:border-stone-500 scale-95'
+                }`}
+                style={{ borderColor: activeSlot === 1 ? wDef1.color : '#44403c' }}
+                title={`[1] ${wDef1.name} (Presiona tecla 1)`}
               >
-                {player.currentWeapon === 'shotgun'
-                  ? 'SG'
-                  : player.currentWeapon === 'laser'
-                  ? 'LZ'
-                  : player.currentWeapon === 'plasma'
-                  ? 'PL'
-                  : player.activeWeaponSlot || '2'}
-              </span>
+                <div className="flex gap-0.5 justify-center pt-0.5">
+                  <div className="w-1.5 h-3 border border-black rounded-t-sm" style={{ backgroundColor: wDef1.color }} />
+                  <div className="w-1.5 h-3 border border-black rounded-t-sm" style={{ backgroundColor: wDef1.color }} />
+                  <div className="w-1.5 h-3 border border-black rounded-t-sm" style={{ backgroundColor: wDef1.color }} />
+                </div>
+                <div className="flex flex-col items-center pb-0.5">
+                  <span className="text-xs font-bold tracking-tight" style={{ color: wDef1.color }}>
+                    1
+                  </span>
+                  <span className="text-[6px] text-stone-400 font-sans font-bold">
+                    {wDef1.id === 'shotgun' ? 'SG' : wDef1.id === 'laser' ? 'LZ' : wDef1.id === 'plasma' ? 'PL' : 'PPK'}
+                  </span>
+                </div>
+              </button>
+
+              {/* Slot 2 Box */}
+              <button
+                type="button"
+                onClick={() => onSwitchWeaponSlot?.(2)}
+                className={`w-11 h-14 bg-black border-2 rounded-t-md flex flex-col items-center justify-between p-1 transition-all pointer-events-auto cursor-pointer ${
+                  activeSlot === 2
+                    ? 'shadow-[0_0_10px_rgba(255,255,255,0.35)] scale-100'
+                    : wDef2
+                    ? 'border-stone-700 opacity-60 hover:opacity-90 hover:border-stone-500 scale-95'
+                    : 'border-dashed border-stone-800 opacity-40 hover:opacity-60 scale-95'
+                }`}
+                style={{ borderColor: activeSlot === 2 && wDef2 ? wDef2.color : wDef2 ? '#44403c' : '#292524' }}
+                title={wDef2 ? `[2] ${wDef2.name} (Presiona tecla 2)` : 'Ranura 2 vacía. Recoge un arma del suelo con [E]'}
+              >
+                {wDef2 ? (
+                  <>
+                    <div className="flex gap-0.5 justify-center pt-0.5">
+                      <div className="w-1.5 h-3 border border-black rounded-t-sm" style={{ backgroundColor: wDef2.color }} />
+                      <div className="w-1.5 h-3 border border-black rounded-t-sm" style={{ backgroundColor: wDef2.color }} />
+                      <div className="w-1.5 h-3 border border-black rounded-t-sm" style={{ backgroundColor: wDef2.color }} />
+                    </div>
+                    <div className="flex flex-col items-center pb-0.5">
+                      <span className="text-xs font-bold tracking-tight" style={{ color: wDef2.color }}>
+                        2
+                      </span>
+                      <span className="text-[6px] text-stone-400 font-sans font-bold">
+                        {wDef2.id === 'shotgun' ? 'SG' : wDef2.id === 'laser' ? 'LZ' : wDef2.id === 'plasma' ? 'PL' : 'PPK'}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="pt-2 text-stone-600 text-[8px]">+</div>
+                    <span className="text-[8px] font-bold text-stone-500 tracking-tight pb-0.5">
+                      2 VACÍA
+                    </span>
+                  </>
+                )}
+              </button>
             </div>
 
             {/* Health Bar + Current Weapon Banner Stack */}
@@ -108,12 +150,13 @@ export const HUD: React.FC<HUDProps> = ({
                 </div>
               </div>
 
-              {/* Weapon Banner: Name + Attack Style Description */}
+              {/* Weapon Banner: Active Slot Tag + Weapon Name + Fire Mode */}
               <div className="flex items-center gap-1.5 px-2 py-0.5 bg-black/90 border border-stone-800 rounded text-[8px] sm:text-[9px]">
                 <span
                   className="w-2 h-2 rounded-full inline-block animate-pulse"
                   style={{ backgroundColor: currentWeaponDef.color, boxShadow: `0 0 6px ${currentWeaponDef.color}` }}
                 />
+                <span className="text-stone-400 font-bold">[{activeSlot}]</span>
                 <span className="font-bold tracking-wider" style={{ color: currentWeaponDef.color }}>
                   {currentWeaponDef.name.toUpperCase()}
                 </span>
@@ -260,12 +303,18 @@ export const HUD: React.FC<HUDProps> = ({
         )}
 
         {/* Center: Controls Banner */}
-        <div className="hidden md:flex items-center gap-2 bg-black/80 border border-stone-700 px-3 py-1 rounded text-[8px] text-stone-300">
+        <div className="hidden md:flex items-center gap-2 bg-black/85 border border-stone-700 px-3 py-1 rounded text-[8px] text-stone-300">
           <span className="text-emerald-400 font-bold">WASD</span>
           <span>MOVER</span>
           <span className="text-stone-600">•</span>
           <span className="text-amber-400 font-bold">FLECHITAS ↑↓←→</span>
           <span>DISPARAR</span>
+          <span className="text-stone-600">•</span>
+          <span className="text-cyan-400 font-bold">1 / 2</span>
+          <span>CAMBIAR ARMA</span>
+          <span className="text-stone-600">•</span>
+          <span className="text-yellow-400 font-bold">E</span>
+          <span>SUSTITUIR</span>
         </div>
 
         {/* Floor Level */}

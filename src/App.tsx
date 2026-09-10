@@ -435,6 +435,7 @@ export default function App() {
             isSaving={isSaving}
             hasSavedGame={!!savedGame}
             interactionPrompt={interactionPrompt}
+            onSwitchWeaponSlot={(slot) => engineRef.current?.switchWeaponSlot(slot)}
           />
         )}
 

@@ -224,7 +224,8 @@ export class GameEngine {
       isSwinging: false,
       swingProgress: 0,
       explosivesAmmo: restoredSave?.explosivesAmmo ?? 18,
-      activeWeaponSlot: 2,
+      activeWeaponSlot: 1,
+      weapons: ['pistol', null],
       currentWeapon: 'pistol',
     };
 
@@ -318,11 +319,11 @@ export class GameEngine {
     if (e.code === 'Space' && this.player.dashCooldown <= 0 && !this.player.isDashing) {
       this.triggerDash();
     }
-    if (e.code === 'Digit1') {
-      this.player.activeWeaponSlot = 1;
+    if (e.code === 'Digit1' || e.code === 'Numpad1' || e.key === '1') {
+      this.switchWeaponSlot(1);
     }
-    if (e.code === 'Digit2') {
-      this.player.activeWeaponSlot = 2;
+    if (e.code === 'Digit2' || e.code === 'Numpad2' || e.key === '2') {
+      this.switchWeaponSlot(2);
     }
     if (e.code === 'KeyQ') {
       this.fireExplosive();
@@ -331,6 +332,26 @@ export class GameEngine {
       this.showPathGuide = !this.showPathGuide;
     }
   };
+
+  public switchWeaponSlot(slot: 1 | 2) {
+    const targetWeapon = this.player.weapons[slot - 1];
+    if (!targetWeapon) {
+      this.addFloatingNotice(this.player.x, this.player.y - 14, `RANURA ${slot} VACÍA`, '#ef4444');
+      sound.playTone(220, 0.08, 'sawtooth');
+      return;
+    }
+    if (this.player.activeWeaponSlot === slot && this.player.currentWeapon === targetWeapon) {
+      return;
+    }
+    this.player.activeWeaponSlot = slot;
+    this.player.currentWeapon = targetWeapon;
+    const wDef = getWeaponDef(targetWeapon);
+    this.fireRate = wDef.fireRate;
+    this.shootCooldownTimer = 0;
+    sound.playReload();
+    this.addFloatingNotice(this.player.x, this.player.y - 14, `[RANURA ${slot}] ${wDef.shortName}`, wDef.color);
+    this.screenShake = Math.max(this.screenShake, 2);
+  }
 
   private handleKeyUp = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement | null;
@@ -979,11 +1000,71 @@ export class GameEngine {
           currentLegend = `INTEL / RADS (+5): Documentos confidenciales de la base enemiga.`;
         } else if (item.type === 'weapon') {
           const wDef = getWeaponDef(item.weaponType || 'shotgun');
-          currentLegend = `[ARMA AVANZADA] ${wDef.name.toUpperCase()} (${wDef.fireMode}): Písala para equiparla y cambiar tu estilo de ataque.`;
+          const currentWDef = getWeaponDef(this.player.currentWeapon);
+          if (this.player.weapons[1] === null) {
+            currentLegend = `[ARMA EN EL SUELO] ${wDef.name.toUpperCase()} (${wDef.fireMode}): Presiona [E] para recoger en Ranura 2.`;
+          } else {
+            currentLegend = `[ARMA EN EL SUELO] ${wDef.name.toUpperCase()}: Presiona [E] para SUSTITUIR tu ${currentWDef.name.toUpperCase()} (Ranura ${this.player.activeWeaponSlot}).`;
+          }
         }
       }
 
-      // Touch / Collect distance (< 48px - enlarged hitbox for smooth pickup)
+      // Special interaction for Weapon Drops: requires pressing [E] (or [F]) to pick up / substitute
+      if (item.type === 'weapon') {
+        if (dist < 58 && (this.keys['KeyE'] || this.keys['KeyF'])) {
+          this.keys['KeyE'] = false;
+          this.keys['KeyF'] = false;
+          const newWeapon = item.weaponType || 'shotgun';
+          const wDef = getWeaponDef(newWeapon);
+          sound.playWeaponPickup();
+
+          if (this.player.weapons[1] === null) {
+            // Empty slot 2 available: pick up into slot 2 and equip!
+            this.player.weapons[1] = newWeapon;
+            this.player.activeWeaponSlot = 2;
+            this.player.currentWeapon = newWeapon;
+            this.fireRate = wDef.fireRate;
+            this.shootCooldownTimer = 0;
+            currentRoom.items.splice(i, 1);
+            this.addFloatingNotice(this.player.x, this.player.y - 14, `[RANURA 2] ¡${wDef.shortName} EQUIPADA!`, wDef.color);
+          } else {
+            // Both slots are occupied! Substitute the currently active slot
+            const activeIdx = this.player.activeWeaponSlot === 2 ? 1 : 0;
+            const oldWeapon = this.player.weapons[activeIdx] || this.player.currentWeapon;
+            const oldWDef = getWeaponDef(oldWeapon);
+
+            // Swap: leave old weapon on the floor where this pickup was
+            item.weaponType = oldWeapon;
+            item.name = oldWDef.name;
+
+            // Equip new weapon in active slot
+            this.player.weapons[activeIdx] = newWeapon;
+            this.player.currentWeapon = newWeapon;
+            this.fireRate = wDef.fireRate;
+            this.shootCooldownTimer = 0;
+
+            this.addFloatingNotice(this.player.x, this.player.y - 14, `¡SUSTITUIDA POR ${wDef.shortName}!`, wDef.color);
+          }
+
+          this.screenShake = 4;
+          for (let s = 0; s < 14; s++) {
+            const sAngle = (s / 14) * Math.PI * 2;
+            this.particles.push({
+              x: this.player.x,
+              y: this.player.y,
+              vx: Math.cos(sAngle) * 85,
+              vy: Math.sin(sAngle) * 85,
+              color: wDef.color,
+              size: 3,
+              alpha: 1,
+              decay: 2.2,
+            });
+          }
+        }
+        continue;
+      }
+
+      // Touch / Collect distance (< 48px - enlarged hitbox for smooth pickup of standard items)
       if (dist < 48) {
         if (item.type === 'ammo') {
           if (this.player.ammo < this.player.maxAmmo) {
@@ -1018,29 +1099,6 @@ export class GameEngine {
           this.player.intelCollected += 5;
           currentRoom.items.splice(i, 1);
           this.addFloatingNotice(item.x, item.y, '+5 INTEL', '#4ade80');
-        } else if (item.type === 'weapon') {
-          const newWeapon = item.weaponType || 'shotgun';
-          const wDef = getWeaponDef(newWeapon);
-          sound.playWeaponPickup();
-          this.player.currentWeapon = newWeapon;
-          this.fireRate = wDef.fireRate;
-          this.shootCooldownTimer = 0;
-          currentRoom.items.splice(i, 1);
-          this.addFloatingNotice(item.x, item.y - 12, `¡EQUIPADO: ${wDef.shortName}!`, wDef.color);
-          this.screenShake = 4;
-          for (let s = 0; s < 14; s++) {
-            const sAngle = (s / 14) * Math.PI * 2;
-            this.particles.push({
-              x: this.player.x,
-              y: this.player.y,
-              vx: Math.cos(sAngle) * 85,
-              vy: Math.sin(sAngle) * 85,
-              color: wDef.color,
-              size: 3,
-              alpha: 1,
-              decay: 2.2,
-            });
-          }
         }
       }
     }

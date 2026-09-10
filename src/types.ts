@@ -212,7 +212,8 @@ export interface PlayerState {
   isSwinging: boolean;
   swingProgress: number;
   explosivesAmmo: number;
-  activeWeaponSlot: number;
+  activeWeaponSlot: 1 | 2;
+  weapons: [WeaponType, WeaponType | null];
   currentWeapon: WeaponType;
 }
 

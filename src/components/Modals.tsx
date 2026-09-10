@@ -171,9 +171,17 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({ onClose })
             <span className="text-slate-400 font-bold">RECARGAR ARMA:</span>
             <span className="text-cyan-300">TECLA [R]</span>
           </div>
+          <div className="p-2.5 bg-slate-950 rounded border border-amber-500/30 flex items-center justify-between">
+            <span className="text-amber-400 font-bold">CAMBIAR ARMA (MÁX 2):</span>
+            <span className="text-white font-mono">TECLAS [1] y [2]</span>
+          </div>
+          <div className="p-2.5 bg-slate-950 rounded border border-emerald-500/30 flex items-center justify-between">
+            <span className="text-emerald-400 font-bold">SUSTITUIR / RECOGER ARMA:</span>
+            <span className="text-white font-mono">TECLA [E] junto al arma</span>
+          </div>
           <div className="p-2.5 bg-slate-950 rounded border border-slate-800 flex items-center justify-between">
-            <span className="text-slate-400 font-bold">DISPOSITIVOS TÁCTICOS:</span>
-            <span className="text-cyan-300">[1] Humo / [2] Dardo EMP</span>
+            <span className="text-slate-400 font-bold">LANZAR EXPLOSIVOS:</span>
+            <span className="text-orange-400 font-mono">TECLA [Q]</span>
           </div>
         </div>
 
