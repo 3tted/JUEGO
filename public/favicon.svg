@@ -1,17 +1,220 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <circle cx="64" cy="64" r="60" fill="#0c0d12" stroke="#dc2626" stroke-width="4"/>
-  <circle cx="64" cy="64" r="48" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="6 3"/>
-  <rect x="62" y="4" width="4" height="20" fill="#ef4444"/>
-  <rect x="62" y="104" width="4" height="20" fill="#ef4444"/>
-  <rect x="4" y="62" width="20" height="4" fill="#ef4444"/>
-  <rect x="104" y="62" width="20" height="4" fill="#ef4444"/>
-  <!-- Central Doorway -->
-  <polygon points="52,86 52,48 64,40 76,48 76,86" fill="#dc2626" stroke="#b91c1c" stroke-width="1.5"/>
-  <!-- Operative Silhouette -->
-  <circle cx="64" cy="52" r="5" fill="#050608"/>
-  <rect x="58" y="58" width="12" height="16" rx="2" fill="#050608"/>
-  <rect x="59" y="74" width="4" height="12" fill="#050608"/>
-  <rect x="65" y="74" width="4" height="12" fill="#050608"/>
-  <!-- Rifle -->
-  <line x1="60" y1="62" x2="74" y2="70" stroke="#050608" stroke-width="3" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+  <defs>
+    <!-- Gradients -->
+    <radialGradient id="doorGlow" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#ff2a2a" />
+      <stop offset="45%" stop-color="#dc1414" />
+      <stop offset="85%" stop-color="#7f0000" />
+      <stop offset="100%" stop-color="#400000" />
+    </radialGradient>
+
+    <linearGradient id="reticleRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff3333" />
+      <stop offset="50%" stop-color="#c81414" />
+      <stop offset="100%" stop-color="#880c0c" />
+    </linearGradient>
+
+    <linearGradient id="metalSilver" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="40%" stop-color="#e5e7eb" />
+      <stop offset="85%" stop-color="#9ca3af" />
+      <stop offset="100%" stop-color="#4b5563" />
+    </linearGradient>
+
+    <linearGradient id="bunkerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1f242d" />
+      <stop offset="50%" stop-color="#111419" />
+      <stop offset="100%" stop-color="#08090c" />
+    </linearGradient>
+
+    <filter id="redShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="12" flood-color="#ef4444" flood-opacity="0.6" />
+    </filter>
+
+    <filter id="logoGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#000000" flood-opacity="0.9" />
+    </filter>
+  </defs>
+
+  <!-- BACKGROUND SHADOW DROP -->
+  <circle cx="400" cy="400" r="340" fill="#000000" opacity="0.4" />
+
+  <!-- 1. RETICLE TARGET OUTER RING (CRIMSON) -->
+  <g filter="url(#redShadow)">
+    <!-- Outer Crosshair Extensions -->
+    <rect x="393" y="40" width="14" height="85" fill="url(#reticleRed)" rx="2" />
+    <rect x="393" y="675" width="14" height="85" fill="url(#reticleRed)" rx="2" />
+    <rect x="80" y="393" width="85" height="14" fill="url(#reticleRed)" rx="2" />
+    <rect x="635" y="393" width="85" height="14" fill="url(#reticleRed)" rx="2" />
+
+    <!-- Main Target Ring -->
+    <circle cx="400" cy="400" r="275" fill="none" stroke="url(#reticleRed)" stroke-width="14" stroke-linecap="square" />
+    <!-- Secondary Dashed Guide Ring -->
+    <circle cx="400" cy="400" r="255" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="14 8" opacity="0.75" />
+    <!-- Inner Fine Ring -->
+    <circle cx="400" cy="400" r="235" fill="none" stroke="#b91c1c" stroke-width="1.5" opacity="0.45" />
+  </g>
+
+  <!-- 2. FORTRESS / BUNKER STRUCTURE (BLACK & ANGULAR) -->
+  <g id="fortress">
+    <!-- Base Chevron Shield Behind Text -->
+    <polygon points="400,680 230,550 200,430 400,430 600,430 570,550" fill="#0a0c10" stroke="#1f242d" stroke-width="3" />
+
+    <!-- Left Flanking Bunker Wing -->
+    <polygon points="190,480 280,240 330,240 330,480 190,480" fill="url(#bunkerGrad)" stroke="#2b313d" stroke-width="3" />
+    <polygon points="160,480 210,310 260,310 210,480" fill="#12151b" opacity="0.8" />
+    <!-- Left Bunker Slit Windows -->
+    <rect x="220" y="340" width="7" height="42" fill="#d1d5db" rx="1.5" opacity="0.9" />
+    <rect x="238" y="336" width="7" height="46" fill="#d1d5db" rx="1.5" opacity="0.9" />
+    <rect x="256" y="332" width="7" height="50" fill="#d1d5db" rx="1.5" opacity="0.9" />
+
+    <!-- Right Flanking Bunker Wing -->
+    <polygon points="610,480 520,240 470,240 470,480 610,480" fill="url(#bunkerGrad)" stroke="#2b313d" stroke-width="3" />
+    <polygon points="640,480 590,310 540,310 590,480" fill="#12151b" opacity="0.8" />
+    <!-- Right Bunker Slit Windows -->
+    <rect x="537" y="332" width="7" height="50" fill="#d1d5db" rx="1.5" opacity="0.9" />
+    <rect x="555" y="336" width="7" height="46" fill="#d1d5db" rx="1.5" opacity="0.9" />
+    <rect x="573" y="340" width="7" height="42" fill="#d1d5db" rx="1.5" opacity="0.9" />
+
+    <!-- Central High Pylon / Spire Towers -->
+    <polygon points="340,480 340,140 385,110 400,125 400,480" fill="#161920" stroke="#374151" stroke-width="3" />
+    <polygon points="460,480 460,140 415,110 400,125 400,480" fill="#0d0f14" stroke="#374151" stroke-width="3" />
+
+    <!-- Center Top Notch Divider -->
+    <line x1="400" y1="50" x2="400" y2="135" stroke="#ef4444" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  <!-- 3. RED GLOWING DOORWAY & TACTICAL OPERATIVE SILHOUETTE -->
+  <g id="central-doorway">
+    <!-- Doorway Frame Outer Border -->
+    <polygon points="340,480 340,265 400,225 460,265 460,480" fill="#1e0505" stroke="#b91c1c" stroke-width="5" />
+    <!-- Doorway Interior Red Light -->
+    <polygon points="345,480 345,272 400,235 455,272 455,480" fill="url(#doorGlow)" />
+
+    <!-- Inner Doorway Red Accents / Jambs -->
+    <rect x="355" y="280" width="4" height="200" fill="#ff4d4d" opacity="0.8" />
+    <rect x="441" y="280" width="4" height="200" fill="#ff4d4d" opacity="0.8" />
+    <polyline points="355,280 400,248 441,280" fill="none" stroke="#ff4d4d" stroke-width="4" opacity="0.8" />
+
+    <!-- TACTICAL OPERATIVE AGENT 077 SILHOUETTE (IN SOLID BLACK) -->
+    <g fill="#050608">
+      <!-- Tactical Helmet & Night Vision / Visor Goggles -->
+      <ellipse cx="400" cy="295" rx="14" ry="16" />
+      <path d="M388,293 C388,284 412,284 412,293 L413,299 L387,299 Z" />
+      <rect x="394" y="283" width="12" height="6" rx="2" /> <!-- NVG Mount -->
+
+      <!-- Headset & Radio Mic -->
+      <path d="M385,296 L388,306 L394,307" stroke="#050608" stroke-width="2.5" fill="none" />
+
+      <!-- Neck & Collar -->
+      <path d="M394,310 L406,310 L408,317 L392,317 Z" />
+
+      <!-- Heavy Tactical Torso, Plate Carrier & Tactical Rig -->
+      <path d="M382,317 L418,317 L425,360 L421,410 L379,410 L375,360 Z" />
+
+      <!-- Left Shoulder & Arm Holding Rifle Foregrip -->
+      <path d="M382,317 L368,340 L367,380 L382,390 L390,375 L376,368 L378,340 Z" />
+
+      <!-- Right Shoulder & Arm Gripping Rifle Trigger -->
+      <path d="M418,317 L435,342 L438,382 L422,392 L414,375 L428,368 L424,340 Z" />
+
+      <!-- Tactical Assault Carbine Rifle Held at High-Ready Angle -->
+      <!-- Stock & Receiver -->
+      <rect x="408" y="360" width="24" height="7" transform="rotate(-32 408 360)" />
+      <!-- Magazine Curve -->
+      <path d="M412,374 L408,392 L416,394 L419,376 Z" />
+      <!-- Long Barrel & Muzzle / Suppressor Pointing Downward Left -->
+      <rect x="380" y="375" width="48" height="6" transform="rotate(-38 400 380)" />
+      <!-- Scope / Holographic Sight on Top Rail -->
+      <rect x="406" y="364" width="14" height="6" transform="rotate(-38 406 364)" />
+      <!-- Silencer/Flash Hider Tip -->
+      <rect x="430" y="340" width="8" height="7" transform="rotate(-38 430 340)" />
+
+      <!-- Tactical Combat Pants / Holster / Legs in Combat Stance -->
+      <!-- Pelvis & Duty Belt -->
+      <rect x="380" y="408" width="40" height="15" />
+      <!-- Left Leg -->
+      <path d="M380,420 L373,475 L393,475 L396,432 L392,420 Z" />
+      <!-- Right Leg (Slightly Advanced) -->
+      <path d="M404,420 L400,432 L406,475 L426,475 L420,420 Z" />
+      <!-- Tactical Boots Base -->
+      <polygon points="368,472 396,472 398,480 366,480" />
+      <polygon points="404,472 432,472 434,480 402,480" />
+    </g>
+  </g>
+
+  <!-- 4. TEXT BACKDROP BANNER & RED CUTOUT ACCENTS -->
+  <g id="text-banner">
+    <!-- Black Angular Base Panel Behind Text -->
+    <polygon points="15,580 80,410 720,410 785,580 740,610 60,610" fill="#0c0d12" stroke="#1f242d" stroke-width="4" filter="url(#logoGlow)" />
+    <!-- Top Sharp Red Razor Accent Line -->
+    <polyline points="90,418 240,418 390,460 410,460 560,418 710,418" fill="none" stroke="#dc2626" stroke-width="5" stroke-linecap="round" />
+    <!-- Bottom Red Accent Stripe -->
+    <polygon points="100,562 700,562 670,572 130,572" fill="#dc2626" />
+  </g>
+
+  <!-- 5. "INFILTRATION" VECTOR TYPOGRAPHY -->
+  <g id="typography" filter="url(#logoGlow)">
+    <!-- Main Stylized Letters in Metal Silver with Grunge Outlines -->
+    <g fill="url(#metalSilver)" stroke="#090a0f" stroke-width="3" stroke-linejoin="miter">
+      
+      <!-- 'I' (Letter 1) -->
+      <path d="M52,430 L84,430 L84,444 L75,448 L75,528 L84,532 L84,550 L52,550 L52,532 L61,528 L61,448 L52,444 Z" />
+
+      <!-- 'N' (Letter 2) -->
+      <path d="M96,430 L118,430 L118,446 L146,516 L146,446 L138,442 L138,430 L168,430 L168,444 L160,448 L160,548 L138,548 L108,474 L108,534 L116,538 L116,550 L88,550 L88,536 L96,532 Z" />
+
+      <!-- 'F' (Letter 3) -->
+      <path d="M180,430 L234,430 L238,458 L220,458 L218,446 L202,446 L202,480 L226,480 L226,494 L202,494 L202,534 L212,538 L212,550 L172,550 L172,536 L180,532 Z" />
+
+      <!-- 'I' (Letter 4) -->
+      <path d="M246,430 L274,430 L274,444 L266,448 L266,528 L274,532 L274,550 L246,550 L246,532 L254,528 L254,448 L246,444 Z" />
+
+      <!-- 'L' (Letter 5) -->
+      <path d="M286,430 L314,430 L314,444 L306,448 L306,530 L346,530 L348,510 L362,510 L360,550 L278,550 L278,536 L286,532 Z" />
+
+      <!-- 'T' (Letter 6) -->
+      <path d="M356,430 L432,430 L434,458 L418,458 L414,446 L403,446 L403,534 L412,538 L412,550 L376,550 L376,536 L385,532 L385,446 L374,446 L370,458 L354,458 Z" />
+
+      <!-- 'R' (Letter 7) -->
+      <path d="M444,430 L486,430 C498,430 508,436 508,452 C508,465 499,474 488,477 L510,532 L518,534 L518,550 L486,550 L468,485 L462,485 L462,532 L470,536 L470,550 L436,550 L436,536 L444,532 Z M462,446 L462,472 L482,472 C488,472 492,468 492,459 C492,450 488,446 482,446 Z" />
+
+      <!-- 'A' (Letter 8) -->
+      <path d="M532,430 L558,430 L588,534 L596,538 L596,550 L566,550 L566,536 L558,514 L532,514 L524,536 L524,550 L496,550 L496,536 L504,532 Z M536,498 L554,498 L545,462 Z" />
+
+      <!-- 'T' (Letter 9) -->
+      <path d="M592,430 L654,430 L656,458 L642,458 L638,446 L630,446 L630,534 L638,538 L638,550 L608,550 L608,536 L616,532 L616,446 L608,446 L604,458 L590,458 Z" />
+
+      <!-- 'I' (Letter 10) -->
+      <path d="M660,430 L686,430 L686,444 L678,448 L678,528 L686,532 L686,550 L660,550 L660,532 L668,528 L668,448 L660,444 Z" />
+
+      <!-- 'O' RETICLE CROSSHAIR (Letter 11) -->
+      <g transform="translate(726, 490)">
+        <!-- Outer Circle of the O -->
+        <circle cx="0" cy="0" r="38" fill="none" stroke="url(#metalSilver)" stroke-width="15" />
+        <!-- Inner Center Cutout -->
+        <circle cx="0" cy="0" r="18" fill="#0c0d12" />
+        <!-- Crosshair Red Center Dot -->
+        <circle cx="0" cy="0" r="4.5" fill="#ef4444" />
+        <!-- Horizontal Crosshair Reticle Line Through O -->
+        <line x1="-38" y1="0" x2="-18" y2="0" stroke="#ef4444" stroke-width="4" />
+        <line x1="18" y1="0" x2="38" y2="0" stroke="#ef4444" stroke-width="4" />
+        <!-- Vertical Crosshair Slot -->
+        <line x1="0" y1="-38" x2="0" y2="-18" stroke="#ef4444" stroke-width="4" />
+        <line x1="0" y1="18" x2="0" y2="38" stroke="#ef4444" stroke-width="4" />
+      </g>
+
+      <!-- 'N' (Letter 12 - Final) -->
+      <path d="M784,430 L804,430 L804,446 L828,516 L828,446 L820,442 L820,430 L848,430 L848,444 L840,448 L840,548 L820,548 L794,474 L794,534 L802,538 L802,550 L776,550 L776,536 L784,532 Z" transform="translate(-15, 0) scale(0.97, 1)" />
+
+    </g>
+  </g>
+
+  <!-- Distressed Weathering Scratches Over Logo -->
+  <g stroke="#000000" stroke-width="1.8" opacity="0.35">
+    <line x1="140" y1="440" x2="180" y2="480" />
+    <line x1="320" y1="460" x2="360" y2="520" />
+    <line x1="480" y1="450" x2="520" y2="510" />
+    <line x1="620" y1="470" x2="650" y2="530" />
+  </g>
 </svg>
