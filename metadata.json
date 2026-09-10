@@ -1,6 +1,6 @@
 {
   "name": "Agente 077 - Rogue Espionage",
-  "description": "Juego de acción y espionaje roguelike con estética pixel art estilo Nuclear Throne, vista aérea, generación procedimental y caminos transitables garantizados.",
+  "description": "Juego de acción y espionaje roguelike en un complejo industrial militar con estética pixel art táctica, vista aérea, generación procedimental y caminos transitables garantizados.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

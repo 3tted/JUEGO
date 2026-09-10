@@ -26,6 +26,7 @@ import {
   drawConsoleTerminal,
   drawCustomProjectile,
   drawExplosivesChest,
+  drawIndustrialBossMech,
   drawNuclearCrosshair,
   drawNuclearThroneDoor,
   drawPixelRect,
@@ -107,6 +108,9 @@ export class GameEngine {
   public mouseWorldPos: Point = { x: 0, y: 0 };
   public isMouseDown: boolean = false;
   public isRightMouseDown: boolean = false;
+  // Mobile / Touch Twin-Stick Virtual Joysticks
+  public virtualMoveVector: Point = { x: 0, y: 0 };
+  public virtualShootVector: Point = { x: 0, y: 0 };
 
   // Cadencia de fuego (Fire Rate) en segundos para disparo automático con flechitas
   public fireRate: number = 0.20;
@@ -118,6 +122,16 @@ export class GameEngine {
   // Proximity Legend & Floating World Notices
   public activeLegend: string | null = null;
   public floatingNotices: FloatingNotice[] = [];
+
+  public setVirtualMove(x: number, y: number) {
+    this.virtualMoveVector.x = x;
+    this.virtualMoveVector.y = y;
+  }
+
+  public setVirtualShoot(x: number, y: number) {
+    this.virtualShootVector.x = x;
+    this.virtualShootVector.y = y;
+  }
 
   public addFloatingNotice(x: number, y: number, text: string, color: string = '#ffffff') {
     const existing = this.floatingNotices.find((n) => n.text === text && Math.hypot(n.x - x, n.y - y) < 28);
@@ -148,12 +162,16 @@ export class GameEngine {
     this.isPaused = true;
     this.keys = {};
     this.isMouseDown = false;
+    this.virtualMoveVector = { x: 0, y: 0 };
+    this.virtualShootVector = { x: 0, y: 0 };
   }
 
   public resume() {
     this.isPaused = false;
     this.keys = {};
     this.isMouseDown = false;
+    this.virtualMoveVector = { x: 0, y: 0 };
+    this.virtualShootVector = { x: 0, y: 0 };
     this.lastTime = performance.now();
   }
 
@@ -711,7 +729,7 @@ export class GameEngine {
       this.slashCooldown -= dt;
     }
 
-    // 1. DISPARO CON FLECHITAS (Exclusivo con ArrowUp, ArrowDown, ArrowLeft, ArrowRight)
+    // 1. DISPARO CON FLECHITAS O JOYSTICK TÁCTIL DERECHO (Twin-Stick 360°)
     let shootX = 0;
     let shootY = 0;
     if (this.keys['ArrowUp']) shootY -= 1;
@@ -719,14 +737,21 @@ export class GameEngine {
     if (this.keys['ArrowLeft']) shootX -= 1;
     if (this.keys['ArrowRight']) shootX += 1;
 
-    const isShootingWithArrows = shootX !== 0 || shootY !== 0;
+    // Entrada del joystick táctil derecho (si no se usan flechitas del teclado)
+    const vShootLen = Math.hypot(this.virtualShootVector.x, this.virtualShootVector.y);
+    if (shootX === 0 && shootY === 0 && vShootLen > 0.15) {
+      shootX = this.virtualShootVector.x;
+      shootY = this.virtualShootVector.y;
+    }
+
+    const isShooting = shootX !== 0 || shootY !== 0;
 
     if (this.shootCooldownTimer > 0) {
       this.shootCooldownTimer -= dt;
     }
 
-    if (isShootingWithArrows) {
-      // Apunta en la dirección indicada por las flechitas (8 direcciones)
+    if (isShooting) {
+      // Apunta en la dirección indicada por las flechitas o el joystick virtual derecho (360°)
       this.player.angle = Math.atan2(shootY, shootX);
 
       // Disparo automático continuo respetando la cadencia de fuego (Fire Rate)
@@ -737,7 +762,7 @@ export class GameEngine {
       }
     }
 
-    // 2. MOVIMIENTO ESTRICTAMENTE CON WASD (8 DIRECCIONES CON NORMALIZACIÓN DE VECTOR)
+    // 2. MOVIMIENTO CON WASD O JOYSTICK TÁCTIL IZQUIERDO (360° fluido con normalización)
     let moveX = 0;
     let moveY = 0;
     if (this.keys['KeyW']) moveY -= 1;
@@ -752,8 +777,16 @@ export class GameEngine {
       moveY /= moveLen;
     }
 
-    // Si no está disparando con flechitas, el personaje se orienta hacia la dirección que camina
-    if (!isShootingWithArrows && (moveX !== 0 || moveY !== 0)) {
+    // Entrada del joystick táctil izquierdo (movimiento análogo 360°)
+    const vMoveLen = Math.hypot(this.virtualMoveVector.x, this.virtualMoveVector.y);
+    if (moveX === 0 && moveY === 0 && vMoveLen > 0.08) {
+      const mag = Math.min(1.0, vMoveLen);
+      moveX = (this.virtualMoveVector.x / vMoveLen) * mag;
+      moveY = (this.virtualMoveVector.y / vMoveLen) * mag;
+    }
+
+    // Si no está disparando, el personaje se orienta hacia la dirección que camina
+    if (!isShooting && (moveX !== 0 || moveY !== 0)) {
       this.player.angle = Math.atan2(moveY, moveX);
     }
 
@@ -1186,8 +1219,8 @@ export class GameEngine {
       p.y += p.vy * dt;
       p.distanceTravelled += Math.hypot(p.vx * dt, p.vy * dt);
 
-      // Hit wall
-      if (this.checkWallCollision(p.x, p.y, 3) || p.distanceTravelled > p.maxDistance) {
+      // Hit wall or obstacle
+      if (this.checkWallCollision(p.x, p.y, 3, true) || p.distanceTravelled > p.maxDistance) {
         if (p.fromPlayer) {
           this.createWeaponImpact(p.x, p.y, p.weaponType || 'pistol', false);
         } else {
@@ -1429,21 +1462,82 @@ export class GameEngine {
     }
   }
 
-  private checkWallCollision(worldX: number, worldY: number, radius: number): boolean {
+  private checkWallCollision(worldX: number, worldY: number, radius: number, isProjectile = false): boolean {
     for (const room of this.dungeon.rooms.values()) {
       const rb = room.bounds;
+      // Quick bounding box reject
       if (
-        worldX + radius >= rb.worldX &&
-        worldX - radius <= rb.worldX + rb.width &&
-        worldY + radius >= rb.worldY &&
-        worldY - radius <= rb.worldY + rb.height
+        worldX + radius + 24 < rb.worldX ||
+        worldX - radius - 24 > rb.worldX + rb.width ||
+        worldY + radius + 24 < rb.worldY ||
+        worldY - radius - 24 > rb.worldY + rb.height
       ) {
-        const tx = Math.floor((worldX - rb.worldX) / TILE_SIZE);
-        const ty = Math.floor((worldY - rb.worldY) / TILE_SIZE);
+        continue;
+      }
 
-        if (tx >= 0 && tx < ROOM_WIDTH && ty >= 0 && ty < ROOM_HEIGHT) {
+      // Check nearby tile range
+      const minTx = Math.max(0, Math.floor((worldX - radius - 24 - rb.worldX) / TILE_SIZE));
+      const maxTx = Math.min(ROOM_WIDTH - 1, Math.floor((worldX + radius + 24 - rb.worldX) / TILE_SIZE));
+      const minTy = Math.max(0, Math.floor((worldY - radius - 24 - rb.worldY) / TILE_SIZE));
+      const maxTy = Math.min(ROOM_HEIGHT - 1, Math.floor((worldY + radius + 24 - rb.worldY) / TILE_SIZE));
+
+      for (let ty = minTy; ty <= maxTy; ty++) {
+        for (let tx = minTx; tx <= maxTx; tx++) {
           const tile = room.tiles[ty][tx];
-          if (!tile.walkable) return true;
+
+          // 1. Solid Outer Walls or Locked Blast Doors (full tile bounding box)
+          if (tile.type === 'wall' || (tile.type === 'door' && !tile.walkable)) {
+            const tileLeft = rb.worldX + tx * TILE_SIZE;
+            const tileRight = tileLeft + TILE_SIZE;
+            const tileTop = rb.worldY + ty * TILE_SIZE;
+            const tileBottom = tileTop + TILE_SIZE;
+
+            const closestX = Math.max(tileLeft, Math.min(worldX, tileRight));
+            const closestY = Math.max(tileTop, Math.min(worldY, tileBottom));
+            const dX = worldX - closestX;
+            const dY = worldY - closestY;
+            if (dX * dX + dY * dY < radius * radius) {
+              return true;
+            }
+          }
+
+          // 2. Decorative Props (Transformers, Coolant Vats, Crates, Deactivated Scrap)
+          // Uses realistic compact hitboxes so bullets and player can pass between adjacent props!
+          if (tile.type === 'cactus' || tile.type === 'barrel_cactus' || tile.type === 'cover' || tile.type === 'carcass') {
+            const propCenterX = rb.worldX + tx * TILE_SIZE + TILE_SIZE / 2;
+            const propCenterY = rb.worldY + ty * TILE_SIZE + TILE_SIZE / 2;
+            const dX = worldX - propCenterX;
+            const dY = worldY - propCenterY;
+            const distSq = dX * dX + dY * dY;
+
+            if (isProjectile) {
+              // Bullets fly over floor debris/scrap without collision
+              if (tile.type === 'carcass') continue;
+
+              // Small core bullet hitbox (3.5px - 4.5px): Leaves over 38px of open passage between adjacent props
+              let propBulletRadius = 3.5;
+              if (tile.type === 'cover') propBulletRadius = 4.5;
+
+              const hitThreshold = radius + propBulletRadius;
+              if (distSq < hitThreshold * hitThreshold) {
+                return true;
+              }
+            } else {
+              // Player / Guard movement: Compact hitboxes (3px - 5.5px):
+              // Since adjacent tile centers are 48px apart, there is a ~38px gap between adjacent props,
+              // allowing the player (18px diameter) to easily and smoothly walk between them!
+              let propRadius = 5;
+              if (tile.type === 'carcass') propRadius = 3;
+              else if (tile.type === 'barrel_cactus') propRadius = 4.5;
+              else if (tile.type === 'cactus') propRadius = 5;
+              else if (tile.type === 'cover') propRadius = 5.5;
+
+              const hitThreshold = radius + propRadius;
+              if (distSq < hitThreshold * hitThreshold) {
+                return true;
+              }
+            }
+          }
         }
       }
     }
@@ -1464,8 +1558,8 @@ export class GameEngine {
 
     ctx.imageSmoothingEnabled = false;
 
-    // Clear background with deep dark desert rock
-    ctx.fillStyle = '#1c150e';
+    // Clear background with cold dark industrial metal abyss
+    ctx.fillStyle = '#080c10';
     ctx.fillRect(0, 0, w, h);
 
     // Apply Screen Shake
@@ -1570,19 +1664,57 @@ export class GameEngine {
 
     if (!room.isVisited && !room.hasBeenRevealed) return;
 
-    // A. Warm Desert Sand Ground (#dfc37a from screenshot)
-    ctx.fillStyle = '#dfc37a';
+    // A. Industrial Steel Deck Plating Base (#1a2028)
+    ctx.fillStyle = '#161c24';
     ctx.fillRect(rb.worldX, rb.worldY, rb.width, rb.height);
 
-    // Subtle desert dune waves in darker sand (#cca95a)
-    ctx.fillStyle = '#cca95a';
-    for (let y = 0; y < ROOM_HEIGHT; y += 3) {
-      const startX = rb.worldX + ((y * 47) % 60);
-      ctx.fillRect(startX, rb.worldY + y * TILE_SIZE + 8, 32, 2);
-      ctx.fillRect(startX + 40, rb.worldY + y * TILE_SIZE + 10, 24, 2);
+    // Floor tile grid joints and rivets
+    for (let ty = 0; ty < ROOM_HEIGHT; ty++) {
+      for (let tx = 0; tx < ROOM_WIDTH; tx++) {
+        const wx = rb.worldX + tx * TILE_SIZE;
+        const wy = rb.worldY + ty * TILE_SIZE;
+
+        // Seam borders between steel deck plates
+        ctx.fillStyle = '#11161d';
+        ctx.fillRect(wx, wy, TILE_SIZE, 1);
+        ctx.fillRect(wx, wy, 1, TILE_SIZE);
+
+        // Subtle lighter steel plate center
+        ctx.fillStyle = '#1c232d';
+        ctx.fillRect(wx + 1, wy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+
+        // Corner steel rivet bolts
+        ctx.fillStyle = '#2c3644';
+        ctx.fillRect(wx + 2, wy + 2, 2, 2);
+        ctx.fillRect(wx + TILE_SIZE - 4, wy + 2, 2, 2);
+        ctx.fillRect(wx + 2, wy + TILE_SIZE - 4, 2, 2);
+        ctx.fillRect(wx + TILE_SIZE - 4, wy + TILE_SIZE - 4, 2, 2);
+
+        // Occasional steel mesh ventilation grates on select interior tiles
+        if ((tx + ty * 3) % 11 === 0 && tx > 1 && tx < ROOM_WIDTH - 2 && ty > 1 && ty < ROOM_HEIGHT - 2) {
+          ctx.fillStyle = '#0a0e13';
+          ctx.fillRect(wx + 8, wy + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+          ctx.fillStyle = '#222c38';
+          for (let gy = wy + 10; gy < wy + TILE_SIZE - 8; gy += 4) {
+            ctx.fillRect(wx + 9, gy, TILE_SIZE - 18, 2);
+          }
+        }
+      }
     }
 
-    // B. Tiles (Mesa Cliffs, Cacti, Carcasses, Chests)
+    // Industrial Yellow & Charcoal Hazard Warning Strips along perimeter edges
+    ctx.fillStyle = '#eab308';
+    for (let tx = 0; tx < ROOM_WIDTH; tx += 2) {
+      ctx.fillRect(rb.worldX + tx * TILE_SIZE, rb.worldY + 2, TILE_SIZE, 3);
+      ctx.fillRect(rb.worldX + tx * TILE_SIZE, rb.worldY + rb.height - 5, TILE_SIZE, 3);
+    }
+    ctx.fillStyle = '#0f172a';
+    for (let tx = 1; tx < ROOM_WIDTH; tx += 2) {
+      ctx.fillRect(rb.worldX + tx * TILE_SIZE, rb.worldY + 2, TILE_SIZE, 3);
+      ctx.fillRect(rb.worldX + tx * TILE_SIZE, rb.worldY + rb.height - 5, TILE_SIZE, 3);
+    }
+
+    // B. Tiles (Reinforced Armor Bulkheads, Generators, Chemical Vats, Heavy Crates)
     for (let ty = 0; ty < ROOM_HEIGHT; ty++) {
       for (let tx = 0; tx < ROOM_WIDTH; tx++) {
         const tile = room.tiles[ty][tx];
@@ -1590,29 +1722,40 @@ export class GameEngine {
         const wy = rb.worldY + ty * TILE_SIZE;
 
         if (tile.type === 'wall') {
-          // Nuclear Throne Desert Mesa / Cliff Wall:
-          // 1. Cliff Top (Flat khaki stone #bfa87a)
-          ctx.fillStyle = '#000000';
+          // Heavy Industrial Reinforced Bulkhead Wall:
+          // 1. Black outer structural boundary
+          ctx.fillStyle = '#05070a';
           ctx.fillRect(wx, wy, TILE_SIZE, TILE_SIZE);
 
-          ctx.fillStyle = '#bfa87a';
+          // 2. Armor plate body (Gunmetal Slate: #2a333f)
+          ctx.fillStyle = '#2a333f';
           ctx.fillRect(wx + 1, wy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
 
-          // Crag texture & specs on cliff top
-          ctx.fillStyle = '#8f7b54';
-          ctx.fillRect(wx + 4, wy + 5, 3, 2);
-          ctx.fillRect(wx + 18, wy + 12, 4, 2);
+          // 3. Top metallic bevel & light reflection
+          ctx.fillStyle = '#475569';
+          ctx.fillRect(wx + 1, wy + 1, TILE_SIZE - 2, 3);
+          ctx.fillRect(wx + 1, wy + 1, 3, TILE_SIZE - 2);
 
-          // 2. Downward Cliff Face Crag Ridge (if tile below is walkable floor)
+          // 4. Steel reinforcement rivets
+          ctx.fillStyle = '#64748b';
+          ctx.fillRect(wx + 4, wy + 5, 3, 3);
+          ctx.fillRect(wx + TILE_SIZE - 7, wy + 5, 3, 3);
+
+          // 5. Downward Wall Bulkhead Shadow & Hydraulic Wall Girders (if tile below is walkable floor)
           const tileBelow = ty < ROOM_HEIGHT - 1 ? room.tiles[ty + 1][tx] : null;
           if (tileBelow && tileBelow.type !== 'wall') {
-            // Front shadow & crag drop
-            ctx.fillStyle = '#776344';
+            // Dark bulkhead shadow drop
+            ctx.fillStyle = '#0f141c';
             ctx.fillRect(wx + 1, wy + TILE_SIZE - 8, TILE_SIZE - 2, 7);
-            // Jagged tooth crags hanging down
-            ctx.fillRect(wx + 3, wy + TILE_SIZE - 1, 4, 3);
-            ctx.fillRect(wx + 13, wy + TILE_SIZE - 1, 6, 4);
-            ctx.fillRect(wx + 23, wy + TILE_SIZE - 1, 3, 2);
+
+            // Heavy vertical steel girders hanging downward
+            ctx.fillStyle = '#1e2632';
+            ctx.fillRect(wx + 4, wy + TILE_SIZE - 2, 5, 4);
+            ctx.fillRect(wx + TILE_SIZE - 9, wy + TILE_SIZE - 2, 5, 4);
+
+            // Wall pneumatic conduit with status LED
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(wx + Math.floor(TILE_SIZE / 2) - 1, wy + TILE_SIZE - 6, 2, 2);
           }
         } else if (tile.type === 'cover') {
           drawExplosivesChest(ctx, wx + TILE_SIZE / 2, wy + TILE_SIZE / 2);
@@ -1623,13 +1766,27 @@ export class GameEngine {
         } else if (tile.type === 'carcass') {
           drawBoneCarcass(ctx, wx + TILE_SIZE / 2, wy + TILE_SIZE / 2);
         } else if (tile.type === 'elevator') {
-          // Exit Portal
-          ctx.fillStyle = '#000000';
+          // Industrial Cargo Extraction Platform / Hydraulic Elevator
+          ctx.fillStyle = '#020617';
+          ctx.fillRect(wx - 2, wy - 2, TILE_SIZE + 4, TILE_SIZE + 4);
+
+          // Hazard Warning border
+          ctx.fillStyle = '#eab308';
           ctx.fillRect(wx - 1, wy - 1, TILE_SIZE + 2, TILE_SIZE + 2);
-          ctx.fillStyle = '#48bb78';
-          ctx.fillRect(wx, wy, TILE_SIZE, TILE_SIZE);
-          ctx.fillStyle = '#9ae6b4';
+
+          // Interior Steel diamond tread
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(wx + 2, wy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+          ctx.fillStyle = '#1e293b';
           ctx.fillRect(wx + 4, wy + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+
+          // Glowing Green Hydraulic Lift Indicator Ring
+          ctx.fillStyle = '#10b981';
+          ctx.fillRect(wx + 8, wy + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+          ctx.fillStyle = '#34d399';
+          ctx.fillRect(wx + 11, wy + 11, TILE_SIZE - 22, TILE_SIZE - 22);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(wx + 14, wy + 14, TILE_SIZE - 28, TILE_SIZE - 28);
         }
       }
     }
@@ -1731,9 +1888,9 @@ export class GameEngine {
       }
     }
 
-    // Draw Boss
+    // Draw Industrial Titan Boss
     if (room.boss && !room.boss.defeated) {
-      drawScorpion(ctx, room.boss.x, room.boss.y, room.boss.angle, 0);
+      drawIndustrialBossMech(ctx, room.boss.x, room.boss.y, room.boss.angle, this.gameTime);
     }
   }
 

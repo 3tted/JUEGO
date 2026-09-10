@@ -321,7 +321,7 @@ export function drawAgent007Player(
 // Backward-compatible alias
 export const drawDuckPlayer = drawAgent007Player;
 
-// 2. DESERT BANDIT (Hooded raider with goggles & rifle from screenshot)
+// 2. INDUSTRIAL SECURITY OPERATIVE / CYBER-ENFORCER (Replaces Desert Bandit)
 export function drawBandit(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -333,49 +333,91 @@ export function drawBandit(
   ctx.save();
   ctx.translate(Math.floor(x), Math.floor(y));
 
-  // Shadow
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-  ctx.fillRect(-6, 6, 12, 3);
+  // Drop shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.beginPath();
+  ctx.ellipse(0, 7, 8, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
 
   const isFacingLeft = Math.cos(angle) < 0;
 
-  // Outline
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(-7, -9, 14, 15);
-  ctx.fillRect(-8, -7, 16, 11);
+  // Heavy combat boots
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(-5, 4, 4, 4);
+  ctx.fillRect(1, 4, 4, 4);
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(-5, 4, 4, 2);
+  ctx.fillRect(1, 4, 4, 2);
 
-  // Tan / Beige Desert Hood (#b59e74)
-  ctx.fillStyle = isAlert ? '#c53030' : '#b59e74';
-  ctx.fillRect(-6, -8, 12, 7);
+  // Black Silhouette Base / Outline
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-8, -10, 16, 17);
+  ctx.fillRect(-7, -11, 14, 19);
 
-  // Goggles / Dark Visor with glowing cyan/green eye
-  ctx.fillStyle = '#171923';
-  const goggleX = isFacingLeft ? -5 : 0;
-  ctx.fillRect(goggleX, -5, 5, 3);
-  ctx.fillStyle = isAlert ? '#ff0000' : '#48bb78';
-  ctx.fillRect(goggleX + 1, -4, 3, 2);
+  // Armored Combat Fatigues (Charcoal / Slate: #1e293b)
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(-6, -8, 12, 14);
 
-  // Mask / Lower Face (#8c734b)
-  ctx.fillStyle = '#8c734b';
-  ctx.fillRect(-6, -1, 12, 4);
+  // Ballistic Chest Armor Plate (#334155)
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(-5, -3, 10, 8);
+  // High-visibility Industrial Hazard Striping on chest
+  ctx.fillStyle = '#eab308';
+  ctx.fillRect(-4, -1, 3, 2);
+  ctx.fillRect(1, -1, 3, 2);
+  ctx.fillRect(-4, 3, 8, 1);
 
-  // Body / Rags
-  ctx.fillStyle = '#4a5568';
-  ctx.fillRect(-5, 3, 10, 4);
+  // Tactical Pauldrons / Shoulder Armor
+  ctx.fillStyle = '#475569';
+  ctx.fillRect(-7, -4, 2, 4);
+  ctx.fillRect(5, -4, 2, 4);
 
-  // Gun in Hands
+  // Heavy Tactical Ballistic Helmet
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(-6, -10, 12, 7);
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(-5, -9, 10, 5);
+
+  // Glowing Optic Visor Scanner (Pulsing Red when Alert, Cold Cyan when Normal)
+  const visorX = isFacingLeft ? -5 : 0;
+  ctx.fillStyle = isAlert ? '#ef4444' : '#06b6d4';
+  ctx.fillRect(visorX, -7, 5, 2);
+  // Hot center
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(visorX + (isFacingLeft ? 1 : 2), -7, 2, 1);
+
+  // Tactical Headset / Antenna on the side
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(isFacingLeft ? 4 : -5, -11, 1, 4);
+  ctx.fillStyle = isAlert ? '#ef4444' : '#10b981';
+  ctx.fillRect(isFacingLeft ? 4 : -5, -12, 1, 1);
+
+  // Heavy Tactical Industrial Weapon (Pivots toward aiming angle)
   ctx.save();
   ctx.rotate(angle);
+  // Weapon Shadow / Outline
   ctx.fillStyle = '#000000';
-  ctx.fillRect(4, -2, 10, 4);
-  ctx.fillStyle = '#718096';
-  ctx.fillRect(5, -1, 8, 2);
+  ctx.fillRect(3, -3, 13, 6);
+  // Gun Receiver (Matte Black Steel)
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(4, -2, 11, 4);
+  // Metallic Barrel & Heat Shroud
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(7, -1, 7, 2);
+  // Laser Sight module / Optic emitter
+  ctx.fillStyle = isAlert ? '#ef4444' : '#06b6d4';
+  ctx.fillRect(6, -3, 2, 1);
+  if (isAlert) {
+    // Subtle laser aiming beam
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+    ctx.fillRect(14, -0.5, 24, 1);
+  }
   ctx.restore();
 
   ctx.restore();
 }
 
-// 3. RADIOACTIVE SCORPION (Giant purple/black mutant with stinger tail)
+// 3. COMBAT SPIDER-DRONE / INDUSTRIAL QUAD-MECH (Replaces Radioactive Scorpion)
 export function drawScorpion(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -386,158 +428,354 @@ export function drawScorpion(
   ctx.save();
   ctx.translate(Math.floor(x), Math.floor(y));
 
-  // Shadow
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-  ctx.fillRect(-12, 8, 24, 6);
+  // Mechanical Ground Shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.beginPath();
+  ctx.ellipse(0, 8, 14, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Black Outline
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(-11, -9, 22, 18);
-  ctx.fillRect(-13, -7, 26, 14);
+  // 4 Articulated Hydraulic Legs
+  ctx.fillStyle = '#0f172a';
+  // Front Left Leg
+  ctx.fillRect(-15, -4, 5, 2);
+  ctx.fillRect(-16, -2, 2, 8);
+  // Front Right Leg
+  ctx.fillRect(10, -4, 5, 2);
+  ctx.fillRect(14, -2, 2, 8);
+  // Rear Left Leg
+  ctx.fillRect(-13, 3, 4, 2);
+  ctx.fillRect(-14, 5, 2, 7);
+  // Rear Right Leg
+  ctx.fillRect(9, 3, 4, 2);
+  ctx.fillRect(12, 5, 2, 7);
 
-  // Chitin Shell (Deep purple / metallic black: #3c2448)
-  ctx.fillStyle = '#321c3d';
-  ctx.fillRect(-10, -7, 20, 14);
-  ctx.fillStyle = '#4a2b58';
-  ctx.fillRect(-8, -5, 16, 10);
+  // Chrome hydraulic cylinder highlights
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(-14, -3, 3, 1);
+  ctx.fillRect(11, -3, 3, 1);
+  ctx.fillRect(-12, 4, 2, 1);
+  ctx.fillRect(10, 4, 2, 1);
 
-  // Glowing Red Compound Eyes
-  ctx.fillStyle = '#ff2020';
-  ctx.fillRect(-5, -3, 3, 2);
-  ctx.fillRect(2, -3, 3, 2);
+  // Heavy Chassis Base / Black Armor Rim
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-10, -8, 20, 16);
+  ctx.fillRect(-11, -6, 22, 12);
 
-  // Curved Stinger Tail (reaching overhead)
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(6, -15, 6, 8);
-  ctx.fillRect(9, -19, 5, 5);
-  ctx.fillStyle = '#4a2b58';
-  ctx.fillRect(7, -14, 4, 6);
-  // Red Stinger Tip
-  ctx.fillStyle = '#ff2020';
-  ctx.fillRect(10, -18, 3, 3);
+  // Armor Plates (Gunmetal Steel: #1e293b & #334155)
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(-9, -7, 18, 14);
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(-8, -6, 16, 12);
 
-  // Legs / Claws
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(-13, 2, 4, 5);
-  ctx.fillRect(9, 2, 4, 5);
-  ctx.fillStyle = '#4a2b58';
-  ctx.fillRect(-12, 3, 2, 3);
-  ctx.fillRect(10, 3, 2, 3);
+  // Industrial Yellow Hazard Caution Stripes on Chassis
+  ctx.fillStyle = '#eab308';
+  ctx.fillRect(-7, -4, 3, 2);
+  ctx.fillRect(-2, -4, 3, 2);
+  ctx.fillRect(3, -4, 3, 2);
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(-4, -4, 2, 2);
+  ctx.fillRect(1, -4, 2, 2);
+
+  // Central Rotating Sensor Turret Dome
+  ctx.save();
+  ctx.rotate(angle);
+
+  // Turret Base
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(-4, -4, 8, 8);
+  ctx.fillStyle = '#475569';
+  ctx.fillRect(-3, -3, 6, 6);
+
+  // Dual Heavy Autocannon Barrels extending forward
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(3, -3, 9, 2);
+  ctx.fillRect(3, 1, 9, 2);
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(4, -2.5, 7, 1);
+  ctx.fillRect(4, 1.5, 7, 1);
+
+  // Glowing Optic Targeting Lens
+  ctx.fillStyle = '#ef4444';
+  ctx.fillRect(-1, -1, 3, 3);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, 1, 1);
+
+  ctx.restore();
+
+  // Status LED Beacon on rear chassis
+  ctx.fillStyle = '#22c55e';
+  ctx.fillRect(-7, 3, 2, 2);
+  ctx.fillStyle = '#ef4444';
+  ctx.fillRect(5, 3, 2, 2);
 
   ctx.restore();
 }
 
-// 4. MAGGOT BONE CARCASS (Ribcage mound from screenshot)
+// DEDICATED INDUSTRIAL BOSS TITAN MECH (For boss rooms)
+export function drawIndustrialBossMech(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  angle: number,
+  gameTime: number = 0
+) {
+  ctx.save();
+  ctx.translate(Math.floor(x), Math.floor(y));
+
+  // Colossal Ground Shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.beginPath();
+  ctx.ellipse(0, 16, 24, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Heavy Armored Tread / Quad Legs
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-22, -12, 44, 26);
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(-20, -10, 40, 22);
+
+  // Massive Industrial Chassis
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(-16, -16, 32, 28);
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(-14, -14, 28, 24);
+
+  // Diagonal Hazard Caution Stripes
+  ctx.fillStyle = '#eab308';
+  for (let s = -12; s <= 10; s += 6) {
+    ctx.fillRect(s, -12, 3, 4);
+    ctx.fillRect(s, 6, 3, 4);
+  }
+
+  // Dual Heavy Smoke Exhaust Stacks
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-15, -20, 6, 6);
+  ctx.fillRect(9, -20, 6, 6);
+  ctx.fillStyle = '#475569';
+  ctx.fillRect(-14, -19, 4, 4);
+  ctx.fillRect(10, -19, 4, 4);
+  // Heat glow inside exhaust
+  ctx.fillStyle = '#f97316';
+  ctx.fillRect(-13, -18, 2, 2);
+  ctx.fillRect(11, -18, 2, 2);
+
+  // Pulsing Central Nuclear Reactor Core
+  const pulse = Math.sin(gameTime * 6) * 0.2 + 0.8;
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-6, -6, 12, 12);
+  ctx.fillStyle = `rgba(6, 182, 212, ${pulse})`;
+  ctx.fillRect(-5, -5, 10, 10);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(-2, -2, 4, 4);
+
+  // Revolving Heavy Combat Cannon Armature
+  ctx.save();
+  ctx.rotate(angle);
+  // Left Gatling Arm
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(6, -14, 18, 6);
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(8, -13, 14, 4);
+  // Right Heavy Plasma Mortar
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(6, 8, 18, 6);
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(8, 9, 14, 4);
+  // Boss Laser Targeting Array
+  ctx.fillStyle = '#ef4444';
+  ctx.fillRect(4, -2, 4, 4);
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.45)';
+  ctx.fillRect(8, -0.5, 36, 1);
+  ctx.restore();
+
+  ctx.restore();
+}
+
+// 4. INDUSTRIAL DEACTIVATED MECH SCRAP / WRECKAGE (Replaces Maggot Bone Carcass)
 export function drawBoneCarcass(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.save();
   ctx.translate(Math.floor(x), Math.floor(y));
 
-  // Mound of decayed dirt / gore (#442218)
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(-11, -5, 22, 11);
-  ctx.fillStyle = '#4a2318';
-  ctx.fillRect(-10, -4, 20, 9);
-  ctx.fillStyle = '#683322';
-  ctx.fillRect(-8, -2, 16, 6);
+  // Scorched oil/soot stain on floor
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.beginPath();
+  ctx.ellipse(0, 2, 13, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // White Rib Bones sticking upward
-  ctx.fillStyle = '#ffffff';
-  for (let i = -7; i <= 7; i += 3) {
-    ctx.fillRect(i, -7, 2, 6);
+  // Crumpled Black Steel Chassis
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-11, -5, 22, 10);
+
+  // Sheared Armor Plates (Slate / Gunmetal)
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(-10, -4, 20, 8);
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(-8, -3, 16, 6);
+
+  // Severed Exposed Copper Wiring & Hydraulics
+  ctx.fillStyle = '#f97316';
+  ctx.fillRect(-7, -5, 3, 2);
+  ctx.fillRect(4, -5, 4, 2);
+  ctx.fillStyle = '#06b6d4';
+  ctx.fillRect(-2, 3, 4, 2);
+
+  // Shattered Metallic Reinforcement Ribs
+  ctx.fillStyle = '#64748b';
+  for (let i = -6; i <= 6; i += 3) {
+    ctx.fillRect(i, -6, 2, 4);
   }
-  // Black outlines around ribs
-  ctx.fillStyle = '#000000';
-  for (let i = -7; i <= 7; i += 3) {
-    ctx.fillRect(i - 1, -8, 4, 1);
-  }
+
+  // Dead Optic Core
+  ctx.fillStyle = '#450a0a';
+  ctx.fillRect(-1, -1, 3, 2);
 
   ctx.restore();
 }
 
-// 5. SAGUARO CACTUS (Tall cactus with branches)
+// 5. INDUSTRIAL POWER TRANSFORMER / GENERATOR UNIT (Replaces Saguaro Cactus)
 export function drawSaguaroCactus(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.save();
   ctx.translate(Math.floor(x), Math.floor(y));
 
   // Shadow
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-  ctx.fillRect(-4, 5, 8, 3);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.beginPath();
+  ctx.ellipse(0, 6, 12, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Black outline
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(-3, -14, 6, 20); // main trunk
-  ctx.fillRect(-7, -9, 5, 6);   // left branch
-  ctx.fillRect(-7, -12, 3, 5);
-  ctx.fillRect(2, -7, 5, 6);    // right branch
-  ctx.fillRect(4, -10, 3, 5);
+  // Outer Structural Frame (Matte Black Steel)
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-9, -15, 18, 22);
 
-  // Green flesh (#2d6b38)
-  ctx.fillStyle = '#2d6b38';
-  ctx.fillRect(-2, -13, 4, 18);
-  ctx.fillRect(-6, -8, 3, 4);
-  ctx.fillRect(-6, -11, 2, 4);
-  ctx.fillRect(3, -6, 3, 4);
-  ctx.fillRect(4, -9, 2, 4);
+  // Heavy Industrial Generator Casing (Dark Slate: #1e293b)
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(-8, -14, 16, 20);
 
-  // Highlights
-  ctx.fillStyle = '#48bb78';
-  ctx.fillRect(-1, -12, 1, 16);
+  // Beveled Steel Armor Plates (#334155)
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(-7, -13, 14, 18);
+
+  // Top Cooling Fans / Air Grille
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(-6, -12, 12, 3);
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(-5, -11, 10, 1);
+
+  // High-Voltage Electrical Hazard Triangle Badge
+  ctx.fillStyle = '#eab308';
+  ctx.beginPath();
+  ctx.moveTo(0, -7);
+  ctx.lineTo(5, 0);
+  ctx.lineTo(-5, 0);
+  ctx.closePath();
+  ctx.fill();
+  // Lightning bolt symbol
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-1, -4, 2, 3);
+  ctx.fillRect(0, -2, 2, 2);
+
+  // Copper Induction Coils on left & right sides
+  ctx.fillStyle = '#b45309';
+  ctx.fillRect(-9, -8, 2, 8);
+  ctx.fillRect(7, -8, 2, 8);
+  ctx.fillStyle = '#d97706';
+  ctx.fillRect(-9, -6, 2, 4);
+  ctx.fillRect(7, -6, 2, 4);
+
+  // Lower Status Diodes & Diagnostic Display
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-5, 1, 10, 3);
+  ctx.fillStyle = '#22c55e'; // Green OK
+  ctx.fillRect(-4, 2, 2, 1);
+  ctx.fillStyle = '#06b6d4'; // Cyan telemetry
+  ctx.fillRect(-1, 2, 2, 1);
+  ctx.fillStyle = '#ef4444'; // Red fault line
+  ctx.fillRect(2, 2, 2, 1);
 
   ctx.restore();
 }
 
-// 6. BARREL CACTUS (Round green ball with spines)
+// 6. INDUSTRIAL CHEMICAL & COOLANT STORAGE VAT (Replaces Barrel Cactus)
 export function drawBarrelCactus(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.save();
   ctx.translate(Math.floor(x), Math.floor(y));
 
   // Shadow
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-  ctx.fillRect(-6, 4, 12, 3);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.beginPath();
+  ctx.ellipse(0, 6, 11, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Outline
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(-6, -5, 12, 10);
-  ctx.fillRect(-5, -6, 10, 12);
+  // Cylindrical Outer Hull (Black Steel Border)
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-8, -8, 16, 15);
+  ctx.fillRect(-9, -6, 18, 11);
 
-  // Green body (#276749)
-  ctx.fillStyle = '#22543d';
-  ctx.fillRect(-5, -4, 10, 8);
-  ctx.fillStyle = '#2f855a';
-  ctx.fillRect(-4, -3, 8, 6);
+  // Reinforced Drum Body (Industrial Slate: #1e293b)
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(-7, -7, 14, 13);
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(-6, -6, 12, 11);
 
-  // Spines / Ridge Lines
-  ctx.fillStyle = '#9ae6b4';
-  ctx.fillRect(-3, -3, 1, 6);
-  ctx.fillRect(0, -3, 1, 6);
-  ctx.fillRect(3, -3, 1, 6);
+  // Glowing Toxic Coolant / Fuel Inspection Band (#22c55e or #06b6d4)
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-7, -2, 14, 4);
+  ctx.fillStyle = '#22c55e';
+  ctx.fillRect(-6, -1, 12, 2);
+  ctx.fillStyle = '#86efac';
+  ctx.fillRect(-3, -1, 6, 1);
+
+  // Reinforced Steel Pressure Rim Bands
+  ctx.fillStyle = '#475569';
+  ctx.fillRect(-8, -6, 16, 2);
+  ctx.fillRect(-8, 3, 16, 2);
+
+  // Pressure Release Valve / Gauge Cap on Top
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-3, -10, 6, 3);
+  ctx.fillStyle = '#eab308';
+  ctx.fillRect(-2, -9, 4, 2);
 
   ctx.restore();
 }
 
-// 7. EXPLOSIVES AMMO CHEST (Wooden crate from screenshot)
+// 7. HEAVY BALLISTIC ORDNANCE CRATE (Replaces Wooden Explosives Chest)
 export function drawExplosivesChest(ctx: CanvasRenderingContext2D, x: number, y: number) {
   ctx.save();
   ctx.translate(Math.floor(x), Math.floor(y));
 
   // Shadow
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-  ctx.fillRect(-8, 6, 16, 3);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.beginPath();
+  ctx.ellipse(0, 7, 12, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
 
-  // Outline
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(-8, -6, 16, 12);
+  // Heavy Steel Lockbox Outline
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-9, -6, 18, 13);
 
-  // Dark Red / Mahogany Wood (#63171b)
-  ctx.fillStyle = '#63171b';
-  ctx.fillRect(-7, -5, 14, 10);
-  ctx.fillStyle = '#7b2024';
-  ctx.fillRect(-6, -4, 12, 8);
+  // Ballistic Container Casing (Military Olive / Gunmetal: #1e293b)
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(-8, -5, 16, 11);
+  ctx.fillStyle = '#334155';
+  ctx.fillRect(-7, -4, 14, 9);
 
-  // Cross Straps / Markings
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(-2, -4, 4, 8);
-  ctx.fillRect(-6, -1, 12, 2);
+  // High-Hazard Diagonal Caution Band
+  ctx.fillStyle = '#eab308';
+  ctx.fillRect(-6, -2, 12, 3);
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(-5, -2, 2, 3);
+  ctx.fillRect(-1, -2, 2, 3);
+  ctx.fillRect(3, -2, 2, 3);
+
+  // Dual Heavy Titanium Latches
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillRect(-5, -5, 2, 3);
+  ctx.fillRect(3, -5, 2, 3);
+
+  // Ordnance Stencil Label Dot
+  ctx.fillStyle = '#ef4444';
+  ctx.fillRect(-1, 2, 2, 2);
 
   ctx.restore();
 }

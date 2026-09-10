@@ -191,7 +191,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           <div className="flex items-center gap-2">
             <Trophy className="w-5 h-5 text-[#4ade80]" />
             <h2 className="text-xs sm:text-sm tracking-wider text-[#e2b044] uppercase">
-              WASTELAND VAULT & CLOUD
+              INDUSTRIAL VAULT & CLOUD
             </h2>
           </div>
           <button
@@ -350,7 +350,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                       name="email"
                       type="email"
                       required
-                      placeholder="correo@wasteland.net (obligatorio)"
+                      placeholder="agente@complejo.net (obligatorio)"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       onKeyDown={(e) => e.stopPropagation()}
@@ -515,7 +515,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     <div className="bg-[#100d0b] border border-[#3d322a] p-2 flex flex-col gap-1">
                       <span className="text-[#8c786a]">PISO ACTUAL</span>
                       <span className="text-sm text-[#e2b044] font-bold">
-                        Wasteland 1-{savedGame.floorLevel}
+                        Sector Industrial 1-{savedGame.floorLevel}
                       </span>
                     </div>
                     <div className="bg-[#100d0b] border border-[#3d322a] p-2 flex flex-col gap-1">
@@ -827,7 +827,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   <Flame className="w-8 h-8 text-[#e2b044]" />
                   <div className="text-[10px] text-[#f4ecd8]">NO CLOUD PROFILE LINKED</div>
                   <p className="text-[8px] text-[#8c786a] max-w-sm leading-relaxed">
-                    Sign in with Google or Email/Password above to permanently track your mutant evolution, highest wasteland sector, and compete on the global leaderboard.
+                    Sign in with Google or Email/Password above to permanently track your mutant evolution, highest industrial sector, and compete on the global leaderboard.
                   </p>
                 </div>
               )}

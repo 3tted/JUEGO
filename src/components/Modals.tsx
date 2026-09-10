@@ -151,6 +151,14 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({ onClose })
           <div className="p-2.5 bg-slate-950/70 rounded border border-slate-800 text-[11px] text-slate-400">
             ⚡ <span className="text-amber-300 font-bold">ACCIONES SIMULTÁNEAS:</span> Muévete en cualquier dirección con WASD mientras mantienes presionadas las flechitas para disparar en ráfaga automática hacia otro lado.
           </div>
+          <div className="p-2.5 bg-cyan-950/40 rounded border border-cyan-500/40 text-[11px] text-cyan-200">
+            📱 <span className="text-cyan-300 font-bold">EN TELÉFONO / PANTALLA TÁCTIL (TWIN-STICK):</span>
+            <div className="mt-1 space-y-0.5 text-slate-300">
+              <div>• <strong className="text-cyan-400">Joystick Izquierdo (Azul)</strong>: Desliza para moverte en 360°.</div>
+              <div>• <strong className="text-rose-400">Joystick Derecho (Rojo)</strong>: Arrastra para apuntar y disparar ráfagas en 360°.</div>
+              <div>• Botones táctiles para <strong>Dash</strong>, <strong>Recargar</strong>, <strong>[E] Acción</strong> y <strong>Cambiar Arma</strong>.</div>
+            </div>
+          </div>
           <div className="p-2.5 bg-slate-950 rounded border border-slate-800 flex items-center justify-between">
             <span className="text-slate-400 font-bold">ESQUIVE TÁCTICO (DASH):</span>
             <span className="text-cyan-300">[ESPACIO]</span>

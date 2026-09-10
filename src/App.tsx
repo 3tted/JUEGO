@@ -449,24 +449,27 @@ export default function App() {
           <span>AYUDA [H]</span>
         </button>
 
-        {/* Mobile Virtual Controls */}
+        {/* Mobile Virtual Twin-Stick Controls */}
         <VirtualControls
           onMove={(dx, dy) => {
-            if (!engineRef.current) return;
-            engineRef.current.keys['KeyW'] = dy < -0.3;
-            engineRef.current.keys['KeyS'] = dy > 0.3;
-            engineRef.current.keys['KeyA'] = dx < -0.3;
-            engineRef.current.keys['KeyD'] = dx > 0.3;
+            if (engineRef.current) {
+              engineRef.current.setVirtualMove(dx, dy);
+            }
           }}
           onStopMove={() => {
-            if (!engineRef.current) return;
-            engineRef.current.keys['KeyW'] = false;
-            engineRef.current.keys['KeyS'] = false;
-            engineRef.current.keys['KeyA'] = false;
-            engineRef.current.keys['KeyD'] = false;
+            if (engineRef.current) {
+              engineRef.current.setVirtualMove(0, 0);
+            }
           }}
-          onShoot={() => {
-            if (engineRef.current) engineRef.current.swingKatanaOrShoot();
+          onShootVector={(dx, dy) => {
+            if (engineRef.current) {
+              engineRef.current.setVirtualShoot(dx, dy);
+            }
+          }}
+          onStopShoot={() => {
+            if (engineRef.current) {
+              engineRef.current.setVirtualShoot(0, 0);
+            }
           }}
           onDash={() => {
             if (engineRef.current) engineRef.current.triggerDash();
@@ -479,8 +482,15 @@ export default function App() {
             engineRef.current.keys['KeyE'] = true;
             setTimeout(() => {
               if (engineRef.current) engineRef.current.keys['KeyE'] = false;
-            }, 300);
+            }, 250);
           }}
+          onSwitchWeaponSlot={(slot) => {
+            if (engineRef.current) {
+              engineRef.current.switchWeaponSlot(slot);
+            }
+          }}
+          activeWeaponSlot={playerState?.activeWeaponSlot || 1}
+          hasSecondWeapon={Boolean(playerState?.weapons && playerState.weapons[1] !== null)}
         />
       </div>
 

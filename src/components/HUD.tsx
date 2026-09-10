@@ -318,8 +318,8 @@ export const HUD: React.FC<HUDProps> = ({
         </div>
 
         {/* Floor Level */}
-        <div className="bg-black/80 border-2 border-black p-1.5 rounded text-stone-300 text-xs font-bold">
-          WASTELAND 1-{dungeon.floorLevel}
+        <div className="bg-black/80 border-2 border-stone-800 p-1.5 rounded text-amber-400 text-xs font-bold tracking-wider">
+          SECTOR INDUSTRIAL 1-{dungeon.floorLevel}
         </div>
       </div>
     </div>
